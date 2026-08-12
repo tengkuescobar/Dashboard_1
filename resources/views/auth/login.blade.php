@@ -848,7 +848,7 @@
                 </form>
 
                 <div class="login-footer">
-                    <p>Telkom Dashboard Analytics &copy; {{ date('Y') }}</p>
+                    <p>Dashboard Analytics &copy; {{ date('Y') }}</p>
                 </div>
             </div>
         </div>
