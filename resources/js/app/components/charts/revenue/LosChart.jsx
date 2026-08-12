@@ -17,7 +17,7 @@ import {
   handleBarHover,
   ChartHoverPopoverCard
 } from "../../ui/ChartUIComponents";
-import { ChartSkeleton } from "../../ui/Skeleton";
+import { ChartSkeleton } from "../../ui/skeleton";
 
 export const LOS_ALL_SERIES = [
   { key: "Existing", pkey: "ls_ex", tkey: "ls_ex_t", pct: "ls_ex_p", color: C.existing },

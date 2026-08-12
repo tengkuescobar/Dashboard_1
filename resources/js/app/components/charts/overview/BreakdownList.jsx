@@ -4,7 +4,7 @@ import { List } from "lucide-react";
 import { useDateFilter } from "../../Layout";
 import { C } from "../../../utils/formatters";
 import { Card, SectionTitle, PctPill } from "../../ui/ChartUIComponents";
-import { ChartSkeleton } from "../../ui/Skeleton";
+import { ChartSkeleton } from "../../ui/skeleton";
 
 export function BreakdownList() {
   const { dateFilter } = useDateFilter();

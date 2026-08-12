@@ -17,7 +17,7 @@ import {
   handleBarHover,
   ChartHoverPopoverCard
 } from "../../ui/ChartUIComponents";
-import { ChartSkeleton } from "../../ui/Skeleton";
+import { ChartSkeleton } from "../../ui/skeleton";
 
 export const PREPAID_SERIES = [
   { key: "Core & Acquisition", pkey: "pp_core_acq", color: C.bau },

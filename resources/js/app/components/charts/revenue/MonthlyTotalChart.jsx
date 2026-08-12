@@ -17,7 +17,7 @@ import {
   handleBarHover,
   ChartHoverPopoverCard
 } from "../../ui/ChartUIComponents";
-import { ChartSkeleton } from "../../ui/Skeleton";
+import { ChartSkeleton } from "../../ui/skeleton";
 
 export const MT_SERIES = [
   { key: "Broadband", pkey: "mt_bb", color: C.broadband },

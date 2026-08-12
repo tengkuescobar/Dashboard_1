@@ -17,7 +17,7 @@ import {
   handleBarHover,
   ChartHoverPopoverCard
 } from "../../ui/ChartUIComponents";
-import { ChartSkeleton } from "../../ui/Skeleton";
+import { ChartSkeleton } from "../../ui/skeleton";
 
 export const REV_ALL_SERIES = [
   { key: "BAU", pkey: "rv_bau", tkey: "rv_bau_t", pct: "rv_bau_p", color: C.bau },

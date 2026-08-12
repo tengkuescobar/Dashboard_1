@@ -4,7 +4,7 @@ import { Table2 } from "lucide-react";
 import { useDateFilter } from "../../Layout";
 import { C, fmt, formatValue } from "../../../utils/formatters";
 import { Card, SectionTitle } from "../../ui/ChartUIComponents";
-import { ChartSkeleton } from "../../ui/Skeleton";
+import { ChartSkeleton } from "../../ui/skeleton";
 
 export function SummaryTable() {
   const { dateFilter } = useDateFilter();
