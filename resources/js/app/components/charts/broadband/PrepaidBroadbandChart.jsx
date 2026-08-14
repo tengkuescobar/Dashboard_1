@@ -33,6 +33,7 @@ export function PrepaidBroadbandChart() {
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hoveredState, setHoveredState] = useState(null);
+
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export function PrepaidBroadbandChart() {
         <div className="flex gap-2 items-center">
           {activeSeries.length > 1 && <LabelToggle on={showLabels} onToggle={() => setShowLabels((v) => !v)} />}
           <Dropdown value={category} options={catOptions} onChange={setCategory} />
-          <Dropdown value={period} options={["Daily", "Weekly", "Monthly"]} onChange={setPeriod} />
+          <Dropdown value={period} options={["Daily", "Weekly", "Monthly", "Quarterly"]} onChange={setPeriod} />
           <ChartDownloadButton
             onClick={() => {
               const headers = ["Period", ...activeSeries.map(s => s.key), "Total"];
@@ -87,7 +88,11 @@ export function PrepaidBroadbandChart() {
         </div>
       </div>
       {loading ? <ChartSkeleton height={320} /> : <>
-          <ChartLegend items={activeSeries.map((s) => ({ label: s.key, color: s.color }))} />
+          <ChartLegend 
+            items={PREPAID_SERIES.map((s) => ({ label: s.key, color: s.color }))} 
+            activeItem={category}
+            onItemClick={(label) => setCategory(prev => prev === label ? "All" : label)}
+          />
           <div ref={containerRef} className="relative" onMouseLeave={() => setHoveredState(null)}>
             <ResponsiveContainer width="100%" height={320}>
               <ComposedChart

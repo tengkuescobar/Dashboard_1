@@ -32,6 +32,7 @@ export function LosChart() {
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hoveredState, setHoveredState] = useState(null);
+
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -86,10 +87,11 @@ export function LosChart() {
         </div>
       </div>
       {loading ? <ChartSkeleton height={300} /> : <>
-          <ChartLegend items={[
-            ...activeSeries.map((s) => ({ label: s.key, color: s.color })),
-            { label: "Total", color: "#94a3b8" }
-          ]} />
+          <ChartLegend 
+            items={LOS_ALL_SERIES.map((s) => ({ label: s.key, color: s.color }))} 
+            activeItem={category}
+            onItemClick={(label) => setCategory(prev => prev === label ? "All" : label)}
+          />
           <div ref={containerRef} className="relative" onMouseLeave={() => setHoveredState(null)}>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart

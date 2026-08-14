@@ -24,6 +24,7 @@ export function DriverTrend() {
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hoveredState, setHoveredState] = useState(null);
+  const [hiddenSeries, setHiddenSeries] = useState([]);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function DriverTrend() {
       <div className="flex items-center justify-between mb-4">
         <SectionTitle icon={Activity} label="Driver Trend" />
         <div className="flex gap-2 items-center">
-          <Dropdown value={period} options={["Daily", "Weekly", "Monthly"]} onChange={setPeriod} />
+          <Dropdown value={period} options={["Daily", "Weekly", "Monthly", "Quarterly"]} onChange={setPeriod} />
           <Dropdown value={metric} options={DRIVER_METRICS} onChange={setMetric} />
           <ChartDownloadButton
             onClick={() => {

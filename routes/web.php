@@ -19,6 +19,7 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::get('/dashboard/prepaid-broadband', [DashboardController::class, 'prepaidBroadband']);
     Route::get('/dashboard/driver-trend', [DashboardController::class, 'driverTrend']);
     Route::get('/dashboard/gauge-chart', [DashboardController::class, 'getGaugeChartData']);
+    Route::get('/dashboard/variance-analysis', [DashboardController::class, 'varianceAnalysis']);
 });
 
 // SPA catch-all (protected)

@@ -1,75 +1,99 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BarChart2, TrendingUp, TrendingDown } from "lucide-react";
-import { exportToCSV } from "../../../utils/csvExport";
-import { Card, SectionTitle, ChartDownloadButton } from "../../ui/ChartUIComponents";
+import axios from "axios";
+import { Card, SectionTitle } from "../../ui/ChartUIComponents";
+import { useDateFilter } from "../../Layout";
+import { ChartSkeleton } from "../../ui/skeleton";
+
+const DUMMY_DATA = [
+  { month: "Jan", previous: 10.5, current: 12.1 },
+  { month: "Feb", previous: 11.2, current: 13.4 },
+  { month: "Mar", previous: 12.1, current: 11.0 },
+  { month: "Apr", previous: 13.5, current: 14.2 },
+  { month: "May", previous: 14.1, current: 15.6 },
+  { month: "Jun", previous: 15.8, current: 17.2 },
+  { month: "Jul", previous: 16.2, current: 16.0 },
+  { month: "Aug", previous: 15.5, current: 18.1 },
+  { month: "Sep", previous: 17.1, current: 19.5 },
+  { month: "Oct", previous: 18.4, current: 20.1 },
+  { month: "Nov", previous: 19.2, current: 21.5 },
+  { month: "Dec", previous: 20.5, current: 22.8 },
+];
 
 export function VarianceComparisonChart({
   title = "Variance Analysis (Jan - Dec)"
 }) {
+  const { dateFilter } = useDateFilter();
+  const [data, setData] = useState(DUMMY_DATA);
+  const [loading, setLoading] = useState(true);
   const [hoveredIdx, setHoveredIdx] = useState(null);
-  const data = [
-    { month: "Jan", previous: 237, current: 216 },
-    { month: "Feb", previous: 220, current: 245 },
-    { month: "Mar", previous: 240, current: 230 },
-    { month: "Apr", previous: 250, current: 260 },
-    { month: "May", previous: 260, current: 255 },
-    { month: "Jun", previous: 280, current: 300 },
-    { month: "Jul", previous: 290, current: 285 },
-    { month: "Aug", previous: 285, current: 310 },
-    { month: "Sep", previous: 310, current: 330 },
-    { month: "Oct", previous: 320, current: 315 },
-    { month: "Nov", previous: 330, current: 350 },
-    { month: "Dec", previous: 340, current: 360 }
-  ];
-  const maxVal = Math.max(...data.flatMap((d) => [d.previous, d.current])) * 1.2;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    axios.get("/api/dashboard/variance-analysis", { params: { year: dateFilter.year } })
+      .then((res) => {
+        if (cancelled) return;
+        try {
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            // Sanitize each item to ensure numeric values
+            const sanitized = res.data.map(item => ({
+              month: item.month || "?",
+              previous: Number(item.previous) || 0,
+              current: Number(item.current) || 0,
+            }));
+            setData(sanitized);
+          } else {
+            setData(DUMMY_DATA);
+          }
+        } catch (e) {
+          console.error("VarianceChart parse error:", e);
+          setData(DUMMY_DATA);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("VarianceChart API error:", err);
+        setData(DUMMY_DATA);
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [dateFilter.year]);
+
+  // Safe computation - all values guaranteed numeric from sanitization above
+  const maxVal = data.length > 0
+    ? Math.max(...data.map(d => Math.max(d.previous, d.current))) * 1.2
+    : 100;
   const containerHeight = 275;
 
-  return <Card>
+  if (loading) {
+    return <Card><SectionTitle icon={BarChart2} label={title} /><ChartSkeleton height={containerHeight} /></Card>;
+  }
+
+  return (
+    <Card>
       <div className="flex items-center justify-between mb-4">
-        <SectionTitle icon={BarChart2} label={title} />
-        <div className="flex items-center gap-4 text-xs font-medium" style={{ color: "var(--dt-text-2)" }}>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "#EF4444" }} />
-            <span>Previous Year</span>
+        <SectionTitle icon={BarChart2} label={`${title} — ${dateFilter.year - 1} vs ${dateFilter.year}`} />
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm" style={{ background: "#EF4444" }} /><span className="text-xs font-medium" style={{ color: "var(--dt-text-2)" }}>{dateFilter.year - 1}</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm" style={{ background: "#3B82F6" }} /><span className="text-xs font-medium" style={{ color: "var(--dt-text-2)" }}>{dateFilter.year}</span></div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "#0284C7" }} />
-            <span>Current Year</span>
-          </div>
-          <ChartDownloadButton
-            onClick={() => {
-              const headers = ["Month", "Previous Year", "Current Year", "Variance Difference", "Growth (%)"];
-              const rows = data.map(d => {
-                const diff = d.current - d.previous;
-                const pct = d.previous === 0 ? 0 : (diff / d.previous) * 100;
-                return [d.month, Math.round(d.previous).toLocaleString("en-US"), Math.round(d.current).toLocaleString("en-US"), `${diff >= 0 ? '+' : ''}${Math.round(diff).toLocaleString("en-US")}`, `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`];
-              });
-              const totPrev = data.reduce((acc, d) => acc + d.previous, 0);
-              const totCurr = data.reduce((acc, d) => acc + d.current, 0);
-              const totDiff = totCurr - totPrev;
-              const totPct = totPrev === 0 ? 0 : (totDiff / totPrev) * 100;
-              const summaryRow = ["Total", Math.round(totPrev).toLocaleString("en-US"), Math.round(totCurr).toLocaleString("en-US"), `${totDiff >= 0 ? '+' : ''}${Math.round(totDiff).toLocaleString("en-US")}`, `${totPct >= 0 ? '+' : ''}${totPct.toFixed(1)}%`];
-              exportToCSV({
-                filename: "Variance_Analysis_Report",
-                title: title || "Variance Analysis Report (Jan - Dec)",
-                subtitle: "Comparison between Previous Year and Current Year",
-                headers,
-                rows,
-                summaryRow
-              });
-            }}
-          />
         </div>
       </div>
       <div className="w-full pt-4 pb-6 relative" onMouseLeave={() => setHoveredIdx(null)}>
         <div className="w-full grid grid-cols-12 gap-1 sm:gap-2 items-end" style={{ height: containerHeight }}>
           {data.map((d, i) => {
-            const diff = d.current - d.previous;
-            const pct = d.previous === 0 ? 0 : (diff / d.previous) * 100;
+            const prev = d.previous;
+            const curr = d.current;
+            const diff = curr - prev;
+            const pct = prev === 0 ? (curr > 0 ? 100 : 0) : (diff / prev) * 100;
+            const pctLabel = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
             const isUp = diff >= 0;
             const barAreaH = 200;
-            const h1 = Math.max(18, (d.previous / maxVal) * (barAreaH - 45));
-            const h2 = Math.max(18, (d.current / maxVal) * (barAreaH - 45));
+            const h1 = Math.max(18, (prev / (maxVal || 1)) * (barAreaH - 45));
+            const h2 = Math.max(18, (curr / (maxVal || 1)) * (barAreaH - 45));
             const Y_red = barAreaH - h1;
             const Y_blue = barAreaH - h2;
             const Y_top = Math.max(20, Math.min(Y_red, Y_blue) - 32);
@@ -80,7 +104,6 @@ export function VarianceComparisonChart({
               className="flex flex-col items-center justify-end h-full w-full group transition-colors hover:bg-slate-500/10 rounded p-0.5 cursor-pointer relative"
               onMouseEnter={() => setHoveredIdx(i)}
             >
-              {/* HOVER POPOVER CARD */}
               {isHovered && (
                 <div
                   style={{
@@ -112,34 +135,31 @@ export function VarianceComparisonChart({
                         <span style={{ fontSize: 10, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>PERIOD</span>
                         <span style={{ fontWeight: 800, fontSize: 13, color: "var(--dt-text-1)", fontFamily: "Inter, sans-serif" }}>{d.month}</span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>TOTAL</span>
-                        <span style={{ fontFamily: "DM Mono, monospace", fontWeight: 800, fontSize: 13, color: "#2563EB" }}>{Math.round(d.previous + d.current).toLocaleString("en-US")}</span>
-                      </div>
                     </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 8px", borderRadius: 8, background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 8px", borderRadius: 6, background: "rgba(37, 99, 235, 0.04)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ width: 8, height: 8, borderRadius: 2, background: "#EF4444" }} />
-                          <span style={{ fontWeight: 600, fontSize: 11 }}>Previous Year</span>
+                          <span style={{ color: "var(--dt-text-1)", fontWeight: 600, fontSize: 11 }}>{dateFilter.year - 1}</span>
                         </div>
-                        <span style={{ fontFamily: "DM Mono, monospace", fontWeight: 800, fontSize: 12, color: "#EF4444" }}>{Math.round(d.previous).toLocaleString("en-US")}</span>
+                        <span style={{ color: "var(--dt-text-1)", fontFamily: "DM Mono, monospace", fontWeight: 700, fontSize: 11.5 }}>
+                          {prev.toFixed(2)} Bn
+                        </span>
                       </div>
-
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 8px", borderRadius: 8, background: "rgba(2, 132, 199, 0.08)", border: "1px solid rgba(2, 132, 199, 0.2)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 8px", borderRadius: 6, background: "rgba(37, 99, 235, 0.04)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 2, background: "#0284C7" }} />
-                          <span style={{ fontWeight: 600, fontSize: 11 }}>Current Year</span>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: "#3B82F6" }} />
+                          <span style={{ color: "var(--dt-text-1)", fontWeight: 600, fontSize: 11 }}>{dateFilter.year}</span>
                         </div>
-                        <span style={{ fontFamily: "DM Mono, monospace", fontWeight: 800, fontSize: 12, color: "#0284C7" }}>{Math.round(d.current).toLocaleString("en-US")}</span>
+                        <span style={{ color: "var(--dt-text-1)", fontFamily: "DM Mono, monospace", fontWeight: 700, fontSize: 11.5 }}>
+                          {curr.toFixed(2)} Bn
+                        </span>
                       </div>
-
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 8px", borderRadius: 8, background: isUp ? "rgba(34, 197, 94, 0.08)" : "rgba(244, 63, 94, 0.08)", border: `1px solid ${isUp ? "rgba(34, 197, 94, 0.2)" : "rgba(244, 63, 94, 0.2)"}` }}>
-                        <span style={{ fontWeight: 600, fontSize: 11, color: isUp ? "#22C55E" : "#F43F5E" }}>Variance / Growth</span>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 5, borderTop: "1px solid var(--dt-row-border, #e2e8f0)", marginTop: 3 }}>
+                        <span style={{ color: "#64748B", fontWeight: 700, fontSize: 10, textTransform: "uppercase" }}>Variance</span>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: "DM Mono, monospace", fontWeight: 800, fontSize: 12, color: isUp ? "#22C55E" : "#F43F5E" }}>
                           {isUp ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                          {isUp ? "+" : ""}{Math.round(diff).toLocaleString("en-US")} ({isUp ? "+" : ""}{pct.toFixed(1)}%)
+                          {isUp ? "+" : ""}{diff.toFixed(2)} Bn ({pctLabel})
                         </span>
                       </div>
                     </div>
@@ -147,15 +167,14 @@ export function VarianceComparisonChart({
                 </div>
               )}
 
-              {/* BARS & DYNAMIC CONNECTOR AREA */}
-              <div className="w-full max-w-[76px] relative px-1 sm:px-2" style={{ height: barAreaH }}>
-                {/* DYNAMIC DASHED CONNECTOR SVG */}
+              <div className="relative w-full overflow-visible pointer-events-none" style={{ height: barAreaH }}>
                 <svg
                   width="100%"
                   height={barAreaH}
                   viewBox={`0 0 100 ${barAreaH}`}
                   fill="none"
                   className="absolute inset-0 overflow-visible pointer-events-none z-10"
+                  preserveAspectRatio="none"
                 >
                   <path
                     d={`M 25 ${Y_red} L 25 ${Y_top} L 75 ${Y_top} L 75 ${Y_blue - 8}`}
@@ -168,36 +187,29 @@ export function VarianceComparisonChart({
                     points={`69,${Y_blue - 9} 81,${Y_blue - 9} 75,${Y_blue}`}
                     fill={isUp ? "#10B981" : "#EF4444"}
                   />
+                  <text
+                    x="50"
+                    y={Y_top - 6}
+                    textAnchor="middle"
+                    fill={isUp ? "#10B981" : "#EF4444"}
+                    fontSize="11"
+                    fontWeight="800"
+                    fontFamily="DM Mono, monospace"
+                  >
+                    {pctLabel}
+                  </text>
                 </svg>
 
-                {/* FLOATING PERCENTAGE BADGE ABOVE CONNECTOR */}
-                <div
-                  className="absolute w-full flex justify-center pointer-events-none z-20"
-                  style={{ top: `${Math.max(2, Y_top - 18)}px` }}
-                >
-                  <span className={`text-[10px] sm:text-[11px] font-black font-mono ${isUp ? "text-emerald-500" : "text-rose-500"} whitespace-nowrap bg-white/90 dark:bg-slate-900/90 px-1 rounded backdrop-blur-xs shadow-xs`}>
-                    {isUp ? "+" : ""}{pct.toFixed(1)}%
-                  </span>
-                </div>
-
-                {/* RED AND BLUE BARS */}
-                <div className="w-full h-full flex items-end justify-center gap-1 relative z-0">
-                  <div
-                    className="w-1/2 rounded-t-md flex items-start justify-center pt-1.5 text-white font-black text-[9px] sm:text-xs transition-opacity group-hover:opacity-90 shadow-sm"
-                    style={{ height: `${h1}px`, backgroundColor: "#EF4444" }}
-                  >
-                    <span className="opacity-95 leading-none">{Math.round(d.previous)}</span>
+                <div className="absolute bottom-0 w-full flex justify-center items-end" style={{ height: "100%" }}>
+                  <div className="w-[30%] max-w-[20px] rounded-t-sm mx-[2px] transition-all duration-300 relative group-hover:brightness-110"
+                    style={{ height: h1, background: "linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.3)" }}>
                   </div>
-                  <div
-                    className="w-1/2 rounded-t-md flex items-start justify-center pt-1.5 text-white font-black text-[9px] sm:text-xs transition-opacity group-hover:opacity-90 shadow-sm"
-                    style={{ height: `${h2}px`, backgroundColor: "#0284C7" }}
-                  >
-                    <span className="opacity-95 leading-none">{Math.round(d.current)}</span>
+                  <div className="w-[30%] max-w-[20px] rounded-t-sm mx-[2px] transition-all duration-300 relative group-hover:brightness-110"
+                    style={{ height: h2, background: "linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%)", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.3)" }}>
                   </div>
                 </div>
               </div>
 
-              {/* MONTH LABEL BELOW X-AXIS */}
               <div className="mt-3 text-center text-xs font-black tracking-wide pb-1" style={{ color: "var(--dt-text-1)" }}>
                 {d.month}
               </div>
@@ -205,5 +217,6 @@ export function VarianceComparisonChart({
           })}
         </div>
       </div>
-    </Card>;
+    </Card>
+  );
 }

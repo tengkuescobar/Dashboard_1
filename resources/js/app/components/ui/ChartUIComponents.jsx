@@ -438,12 +438,28 @@ export function SectionTitle({ icon: Icon, label }) {
     </div>;
 }
 
-export function ChartLegend({ items }) {
-  return <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
-      {items.map(({ label, color, dashed }) => <div key={label} className="flex items-center gap-1.5">
-          {dashed ? <svg width={18} height={10}><line x1={0} y1={5} x2={18} y2={5} stroke={color} strokeWidth={2} strokeDasharray="4 2" /></svg> : <div className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />}
-          <span className="text-xs" style={{ color: "var(--dt-text-2)" }}>{label}</span>
-        </div>)}
+export function ChartLegend({ items, onItemClick, hiddenItems = [], activeItem = null }) {
+  return <div className="flex flex-wrap gap-x-1.5 gap-y-1.5 mb-3">
+      {items.map(({ label, color, dashed }) => {
+        const isActive = activeItem === label;
+        const isDimmed = activeItem && activeItem !== "All" && !isActive;
+        return (
+          <div 
+            key={label} 
+            onClick={() => onItemClick?.(label)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all duration-200 ${onItemClick ? 'cursor-pointer' : ''}`}
+            style={{
+              background: isActive ? `${color}18` : "transparent",
+              border: isActive ? `1.5px solid ${color}` : "1.5px solid transparent",
+              opacity: isDimmed ? 0.35 : 1,
+              filter: isDimmed ? "grayscale(0.8)" : "none",
+            }}
+          >
+            {dashed ? <svg width={18} height={10}><line x1={0} y1={5} x2={18} y2={5} stroke={color} strokeWidth={2} strokeDasharray="4 2" /></svg> : <div className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />}
+            <span className="text-xs font-semibold select-none" style={{ color: isActive ? color : "var(--dt-text-2)" }}>{label}</span>
+          </div>
+        );
+      })}
     </div>;
 }
 

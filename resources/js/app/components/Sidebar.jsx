@@ -108,11 +108,10 @@ export default function Sidebar() {
         <button 
           onClick={handleLogout}
           title={!isOpen ? "Logout" : undefined}
-          className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors hover:bg-opacity-50 ${isOpen ? '' : 'justify-center'}`}
-          style={{ color: "var(--dt-text-3)", background: "transparent" }}
+          className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors hover:bg-red-500/10 ${isOpen ? '' : 'justify-center'}`}
         >
-          <LogOut size={16} className="flex-shrink-0" />
-          {isOpen && <span className="whitespace-nowrap">Logout</span>}
+          <LogOut size={16} className="flex-shrink-0 text-[var(--dt-text-3)] group-hover:text-red-500 transition-colors" />
+          {isOpen && <span className="whitespace-nowrap text-[var(--dt-text-3)] group-hover:text-red-500 transition-colors">Logout</span>}
         </button>
       </div>
     </aside>
