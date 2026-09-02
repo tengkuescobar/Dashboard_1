@@ -1,12 +1,13 @@
-import React from "react";
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import React, { useState } from "react";
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { PieChart } from "lucide-react";
-import { C } from "../../../utils/formatters";
-import { Card, SectionTitle } from "../../ui/ChartUIComponents";
+import { C, formatValue } from "../../../utils/formatters";
+import { Card, SectionTitle, ChartLegend } from "../../ui/ChartUIComponents";
 import { ChartSkeleton } from "../../ui/skeleton";
-import { formatValue } from "../../../utils/formatters";
 
 export function RevenueCompositionPie({ breakdown = [], loading = false }) {
+  const [activeCategory, setActiveCategory] = useState("All");
+
   const getColor = (name) => {
     switch (name) {
       case "Broadband": return C.broadband;
@@ -27,8 +28,8 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
     );
   }
 
-  // Filter out items with 0 or negative actual revenue for the pie chart
-  const data = breakdown
+  // Original data
+  const originalData = breakdown
     .filter((b) => b.actual > 0)
     .map((b) => ({
       name: b.name,
@@ -36,6 +37,11 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
       color: getColor(b.name),
     }))
     .sort((a, b) => b.value - a.value);
+
+  // Filtered data for the Pie Chart
+  const activeData = activeCategory === "All" 
+    ? originalData 
+    : originalData.filter(d => d.name === activeCategory);
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -54,34 +60,40 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
 
   return (
     <Card>
-      <SectionTitle icon={PieChart} label="Revenue Composition" />
-      <div className="w-full h-[250px] mt-2">
-        {data.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <RechartsPieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={90}
-                paddingAngle={2}
-                dataKey="value"
-                stroke="none"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend 
-                verticalAlign="bottom" 
-                height={36} 
-                iconType="circle"
-                wrapperStyle={{ fontSize: "11px", color: "var(--dt-text-2)" }}
-              />
-            </RechartsPieChart>
-          </ResponsiveContainer>
+      <div className="flex items-center justify-between mb-2">
+        <SectionTitle icon={PieChart} label="Revenue Composition" />
+      </div>
+      <ChartLegend 
+        items={originalData.map(d => ({ label: d.name, color: d.color }))}
+        activeItem={activeCategory}
+        onItemClick={(label) => {
+          setActiveCategory(prev => prev === label ? "All" : label);
+        }}
+      />
+      <div className="w-full h-[210px] mt-2 flex flex-col">
+        {originalData.length > 0 ? (
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsPieChart>
+                <Pie
+                  data={activeData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={2}
+                  dataKey="value"
+                  stroke="none"
+                  animationDuration={500}
+                >
+                  {activeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: "var(--dt-text-3)" }}>
             No data available

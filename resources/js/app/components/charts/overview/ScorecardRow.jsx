@@ -5,8 +5,8 @@ import { formatValue, fmt } from "../../../utils/formatters";
 export function ScorecardRow({ data = [], loading = false }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        {[1, 2, 3].map((i) => (
           <div key={i} className="h-[120px] rounded-xl animate-pulse" style={{ background: "var(--dt-card)", border: "1px solid var(--dt-card-border)" }} />
         ))}
       </div>
@@ -14,7 +14,7 @@ export function ScorecardRow({ data = [], loading = false }) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
       {data.map((item, idx) => {
         const isPositive = item.mom >= 0;
         return (
@@ -38,7 +38,7 @@ export function ScorecardRow({ data = [], loading = false }) {
             </div>
             
             <h3 className="text-2xl font-black font-mono tracking-tight" style={{ color: "var(--dt-text-1)" }}>
-              Rp {formatValue(item.mtd)}
+              Rp {formatValue(item.value)}
             </h3>
             
             <div className="flex items-center gap-2 mt-auto pt-3">

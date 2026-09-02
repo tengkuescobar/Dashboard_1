@@ -311,12 +311,11 @@ class DashboardService
             ['title' => 'Revenue New Sales', 'actual' => $selNsAct, 'target' => $selNsTgt],
         ];
 
-        // Revenue table
+        // Revenue Scorecard data
         $revenueTable = [
-            ['label' => 'Total', 'mtd' => $totalCM, 'mom' => $mom, 'yoy' => $yoy, 'ytd' => $totalYTD],
-            ['label' => 'Existing', 'mtd' => $existingCM, 'mom' => $calcPct($existingCM, $existingPM), 'yoy' => $calcPct($existingCM, $existingPYM), 'ytd' => $existingYTD],
-            ['label' => 'New Sales', 'mtd' => $newSalesCM, 'mom' => $calcPct($newSalesCM, $newSalesPM), 'yoy' => $calcPct($newSalesCM, $newSalesPYM), 'ytd' => $newSalesYTD],
-            ['label' => 'Broadband', 'mtd' => $bbCM, 'mom' => $calcPct($bbCM, $bbPM), 'yoy' => $calcPct($bbCM, $bbPYM), 'ytd' => $bbYTD],
+            ['label' => 'Total', 'value' => $selActual, 'mom' => $mom, 'yoy' => $yoy, 'ytd' => $totalYTD],
+            ['label' => 'Existing', 'value' => $selExAct, 'mom' => $calcPct($existingCM, $existingPM), 'yoy' => $calcPct($existingCM, $existingPYM), 'ytd' => $existingYTD],
+            ['label' => 'New Sales', 'value' => $selNsAct, 'mom' => $calcPct($newSalesCM, $newSalesPM), 'yoy' => $calcPct($newSalesCM, $newSalesPYM), 'ytd' => $newSalesYTD],
         ];
 
         // Broadband pack table
