@@ -3,7 +3,7 @@ import axios from "axios";
 import { Gauge, Settings } from "lucide-react";
 import { useDateFilter } from "../components/Layout";
 import {
-  SummaryTable,
+  ScorecardRow,
   GaugeChart,
   BreakdownList,
   RevenueCompositionPie,
@@ -35,7 +35,8 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-5">
-      <SummaryTable data={revenueTable} loading={loading} />
+      {/* Scorecards */}
+      <ScorecardRow data={revenueTable} loading={loading} />
 
       {/* Gauges */}
       <div>

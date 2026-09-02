@@ -4,7 +4,7 @@ import { PieChart } from "lucide-react";
 import { C } from "../../../utils/formatters";
 import { Card, SectionTitle } from "../../ui/ChartUIComponents";
 import { ChartSkeleton } from "../../ui/skeleton";
-import { formatRpValue } from "../../../utils/formatters";
+import { formatValue } from "../../../utils/formatters";
 
 export function RevenueCompositionPie({ breakdown = [], loading = false }) {
   const getColor = (name) => {
@@ -44,7 +44,7 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
         <div className="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 p-3 rounded-lg shadow-xl text-xs">
           <p className="font-bold mb-1" style={{ color: data.color }}>{data.name}</p>
           <p className="text-gray-600 dark:text-gray-300">
-            Revenue: <span className="font-semibold text-gray-900 dark:text-white">Rp {formatRpValue(data.value)}</span>
+            Revenue: <span className="font-semibold text-gray-900 dark:text-white">Rp {formatValue(data.value)}</span>
           </p>
         </div>
       );

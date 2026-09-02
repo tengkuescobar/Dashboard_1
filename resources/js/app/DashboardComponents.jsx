@@ -6,6 +6,7 @@ export * from "./components/ui/skeleton";
 export * from "./components/ui/ChartUIComponents";
 export * from "./components/charts/overview/GaugeChart";
 export * from "./components/charts/overview/SummaryTable";
+export * from "./components/charts/overview/ScorecardRow";
 export * from "./components/charts/overview/BreakdownList";
 export * from "./components/charts/overview/RevenueCompositionPie";
 export * from "./components/charts/revenue/RevenueStackedBar";
