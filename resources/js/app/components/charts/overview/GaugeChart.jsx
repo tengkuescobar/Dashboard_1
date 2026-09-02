@@ -116,10 +116,10 @@ export function GaugeChart({ title, actual, target }) {
         y1={tgtInner.y}
         x2={tgtOuter.x}
         y2={tgtOuter.y}
-        stroke="white"
+        stroke="var(--dt-text-1)"
         strokeWidth={3}
         strokeLinecap="round"
-        opacity={0.9}
+        opacity={0.6}
       />
 
       <text
@@ -128,8 +128,8 @@ export function GaugeChart({ title, actual, target }) {
         textAnchor="middle"
         fontSize={7}
         fontWeight={700}
-        fill="white"
-        opacity={0.7}
+        fill="var(--dt-text-3)"
+        opacity={0.9}
         fontFamily="Inter, sans-serif"
       >TARGET</text>
       <text
@@ -138,8 +138,8 @@ export function GaugeChart({ title, actual, target }) {
         textAnchor="middle"
         fontSize={8}
         fontWeight={700}
-        fill="white"
-        opacity={0.85}
+        fill="var(--dt-text-1)"
+        opacity={0.9}
         fontFamily="DM Mono, monospace"
       >{formatValue(safeTarget)}</text>
 
