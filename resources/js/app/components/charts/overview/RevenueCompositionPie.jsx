@@ -58,6 +58,19 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
     return null;
   };
 
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    if (percent < 0.05) return null;
+    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+  
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   return (
     <Card>
       <div className="flex items-center justify-between mb-2">
@@ -85,6 +98,8 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
                   dataKey="value"
                   stroke="none"
                   animationDuration={500}
+                  labelLine={false}
+                  label={renderCustomizedLabel}
                 >
                   {activeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
