@@ -11,7 +11,7 @@ import { TargetManagementModal } from "../components/charts/overview/TargetManag
 
 export default function DashboardOverview() {
   const { dateFilter } = useDateFilter();
-  const [gaugeData, setGaugeData] = useState([]);
+  const [summaryData, setSummaryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
 
@@ -19,7 +19,7 @@ export default function DashboardOverview() {
     setLoading(true);
     axios.get("/api/dashboard/summary", { params: dateFilter })
       .then((res) => {
-        setGaugeData(res.data.gaugeData || []);
+        setSummaryData(res.data);
         setLoading(false);
       });
   }, [dateFilter]);
@@ -28,9 +28,13 @@ export default function DashboardOverview() {
     fetchSummary();
   }, [fetchSummary]);
 
+  const gaugeData = summaryData?.gaugeData || [];
+  const revenueTable = summaryData?.revenueTable || [];
+  const breakdown = summaryData?.breakdown || [];
+
   return (
     <div className="space-y-5">
-      <SummaryTable />
+      <SummaryTable data={revenueTable} loading={loading} />
 
       {/* Gauges */}
       <div>
@@ -68,9 +72,10 @@ export default function DashboardOverview() {
       />
 
       {/* Breakdown list */}
-      <BreakdownList />
+      <BreakdownList breakdown={breakdown} loading={loading} />
       
       <div className="h-4" />
     </div>
   );
 }
+

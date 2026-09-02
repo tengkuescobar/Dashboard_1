@@ -1,22 +1,10 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React from "react";
 import { Table2 } from "lucide-react";
-import { useDateFilter } from "../../Layout";
 import { C, fmt, formatValue } from "../../../utils/formatters";
 import { Card, SectionTitle } from "../../ui/ChartUIComponents";
 import { ChartSkeleton } from "../../ui/skeleton";
 
-export function SummaryTable() {
-  const { dateFilter } = useDateFilter();
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    setLoading(true);
-    axios.get("/api/dashboard/summary", { params: dateFilter }).then((res) => {
-      setData(res.data.revenueTable || []);
-      setLoading(false);
-    });
-  }, [dateFilter]);
+export function SummaryTable({ data = [], loading = false }) {
   if (loading) {
     return <Card>
         <SectionTitle icon={Table2} label="Revenue Summary" />
@@ -65,3 +53,4 @@ export function SummaryTable() {
       </div>
     </Card>;
 }
+

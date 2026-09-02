@@ -1,22 +1,10 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React from "react";
 import { List } from "lucide-react";
-import { useDateFilter } from "../../Layout";
 import { C } from "../../../utils/formatters";
 import { Card, SectionTitle, PctPill } from "../../ui/ChartUIComponents";
 import { ChartSkeleton } from "../../ui/skeleton";
 
-export function BreakdownList() {
-  const { dateFilter } = useDateFilter();
-  const [breakdown, setBreakdown] = useState([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    setLoading(true);
-    axios.get("/api/dashboard/summary", { params: dateFilter }).then((res) => {
-      setBreakdown(res.data.breakdown || []);
-      setLoading(false);
-    });
-  }, [dateFilter]);
+export function BreakdownList({ breakdown = [], loading = false }) {
   const getColor = (name) => {
     switch (name) {
       case "Broadband":
@@ -71,3 +59,4 @@ export function BreakdownList() {
       </div>
     </Card>;
 }
+
