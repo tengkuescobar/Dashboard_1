@@ -166,20 +166,20 @@ export function IndonesiaGeoChart() {
                   const provinceName = geo.properties.Propinsi || geo.properties.name || geo.properties.NAME_1 || "";
                   const areaName = getAreaForProvince(provinceName);
                   
-                  // If a global area filter is active, highlight ONLY that area.
-                  // Otherwise, show light colors, and bright on hover.
+                  // If no area is selected globally ("All"), show FULL vibrant color for all areas.
+                  // If an area is selected, show FULL vibrant color for the selected area, and dim the rest.
+                  // On hover, we can slightly brighten or add an outline.
+                  const isGlobalAll = dateFilter.area === "All";
+                  const isFiltered = !isGlobalAll && dateFilter.area === areaName;
+                  const isDimmed = !isGlobalAll && dateFilter.area !== areaName;
                   const isHovered = hoveredArea === areaName;
-                  const isFiltered = dateFilter.area !== "All" && dateFilter.area === areaName;
-                  const isDimmed = dateFilter.area !== "All" && dateFilter.area !== areaName;
 
-                  const baseColor = areaName ? AREA_COLORS_LIGHT[areaName] : "#e2e8f0";
-                  const activeColor = areaName ? AREA_COLORS[areaName] : "#cbd5e1";
-                  const dimColor = "#f1f5f9"; // very light gray for non-selected areas
+                  const fullColor = areaName ? AREA_COLORS[areaName] : "#cbd5e1";
+                  const lightColor = areaName ? AREA_COLORS_LIGHT[areaName] : "#e2e8f0";
 
-                  let fill = baseColor;
-                  if (isFiltered) fill = activeColor;
-                  else if (isDimmed) fill = dimColor;
-                  else if (isHovered) fill = activeColor;
+                  let fill = fullColor; // default to full color
+                  if (isDimmed) fill = lightColor; // dim if another area is selected
+                  if (isHovered && isDimmed) fill = fullColor; // full color if hovered even when dimmed
 
                   return (
                     <Geography
@@ -187,7 +187,7 @@ export function IndonesiaGeoChart() {
                       geography={geo}
                       fill={fill}
                       stroke="#ffffff"
-                      strokeWidth={isHovered ? 1.5 : 0.5}
+                      strokeWidth={isHovered ? 1.5 : 0.8}
                       style={{
                         default: { outline: "none", transition: "all 0.3s" },
                         hover: { outline: "none", fill: activeColor, transition: "all 0.3s", cursor: "pointer" },
