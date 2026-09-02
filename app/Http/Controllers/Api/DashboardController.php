@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\DashboardService;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -17,7 +18,17 @@ class DashboardController extends Controller
 
     public function summary(Request $request)
     {
-        return response()->json($this->dashboardService->summary($request));
+        $year = $request->get('year', date('Y'));
+        $month = $request->get('month', 'All');
+        $quarter = $request->get('quarter', 'All');
+        
+        $cacheKey = "dashboard_summary_{$year}_{$month}_{$quarter}";
+
+        $data = Cache::remember($cacheKey, 43200, function () use ($request) {
+            return $this->dashboardService->summary($request);
+        });
+
+        return response()->json($data);
     }
 
     public function getGaugeChartData(Request $request)
