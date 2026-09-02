@@ -21,30 +21,30 @@ USE `dashboard_analysis1`;
 -- Pembagian Tipe Sales: 80% Existing (BAU) = Rp 8 Miliar, 20% New Sales = Rp 2 Miliar.
 -- =====================================================================
 
--- 1.1 Insert Target Bulanan Tahun 2024 (Contoh Bulan 1 s/d 12)
-INSERT INTO fact_targets (year, month, dim_product_id, dim_sales_type_id, target_revenue)
-VALUES 
--- Existing (BAU) - Rp 8.000.000.000 / Bulan (Broadband Core)
-(2024, 1, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), 8000000000.00),
-(2024, 2, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), 8000000000.00),
-(2024, 3, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), 8000000000.00),
-
--- New Sales - Rp 2.000.000.000 / Bulan (Broadband Core)
-(2024, 1, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), 2000000000.00),
-(2024, 2, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), 2000000000.00),
-(2024, 3, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), 2000000000.00);
-
-
--- 1.2 Insert Target Bulanan Tahun 2025 (Contoh Bulan 1 s/d 12)
-INSERT INTO fact_targets (year, month, dim_product_id, dim_sales_type_id, target_revenue)
+-- 1.1 Insert Target Bulanan Tahun 2024 (Contoh Bulan 1 s/d 3)
+INSERT INTO fact_targets (year, month, dim_sales_type_id, dim_product_id, target_revenue, created_at, updated_at)
 VALUES 
 -- Existing (BAU) - Rp 8.000.000.000 / Bulan
-(2025, 1, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), 8000000000.00),
-(2025, 2, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), 8000000000.00),
+(2024, 1, (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), NULL, 8000000000.00, NOW(), NOW()),
+(2024, 2, (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), NULL, 8000000000.00, NOW(), NOW()),
+(2024, 3, (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), NULL, 8000000000.00, NOW(), NOW()),
 
 -- New Sales - Rp 2.000.000.000 / Bulan
-(2025, 1, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), 2000000000.00),
-(2025, 2, (SELECT id FROM dim_products WHERE category = 'Broadband' AND broadband_pack_type = 'Core' LIMIT 1), (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), 2000000000.00);
+(2024, 1, (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), NULL, 2000000000.00, NOW(), NOW()),
+(2024, 2, (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), NULL, 2000000000.00, NOW(), NOW()),
+(2024, 3, (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), NULL, 2000000000.00, NOW(), NOW());
+
+
+-- 1.2 Insert Target Bulanan Tahun 2025 (Contoh Bulan 1 s/d 2)
+INSERT INTO fact_targets (year, month, dim_sales_type_id, dim_product_id, target_revenue, created_at, updated_at)
+VALUES 
+-- Existing (BAU) - Rp 8.000.000.000 / Bulan
+(2025, 1, (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), NULL, 8000000000.00, NOW(), NOW()),
+(2025, 2, (SELECT id FROM dim_sales_types WHERE type_name = 'BAU' LIMIT 1), NULL, 8000000000.00, NOW(), NOW()),
+
+-- New Sales - Rp 2.000.000.000 / Bulan
+(2025, 1, (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), NULL, 2000000000.00, NOW(), NOW()),
+(2025, 2, (SELECT id FROM dim_sales_types WHERE type_name = 'New Sales' LIMIT 1), NULL, 2000000000.00, NOW(), NOW());
 
 
 -- =====================================================================

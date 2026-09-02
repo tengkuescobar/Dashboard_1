@@ -20,6 +20,12 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::get('/dashboard/driver-trend', [DashboardController::class, 'driverTrend']);
     Route::get('/dashboard/gauge-chart', [DashboardController::class, 'getGaugeChartData']);
     Route::get('/dashboard/variance-analysis', [DashboardController::class, 'varianceAnalysis']);
+
+    // Target Management API
+    Route::get('/targets', [\App\Http\Controllers\Api\TargetController::class, 'index']);
+    Route::post('/targets', [\App\Http\Controllers\Api\TargetController::class, 'store']);
+    Route::post('/targets/bulk', [\App\Http\Controllers\Api\TargetController::class, 'bulkStore']);
+    Route::delete('/targets', [\App\Http\Controllers\Api\TargetController::class, 'destroy']);
 });
 
 // SPA catch-all (protected)

@@ -10,7 +10,7 @@ class FactTarget extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $table = 'fact_targets';
 

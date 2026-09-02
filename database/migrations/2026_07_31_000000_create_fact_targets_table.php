@@ -11,10 +11,14 @@ return new class extends Migration
         Schema::create('fact_targets', function (Blueprint $table) {
             $table->id();
             $table->integer('year');
-            $table->integer('month');
-            $table->foreignId('dim_product_id')->constrained('dim_products')->onDelete('cascade');
-            $table->foreignId('dim_sales_type_id')->constrained('dim_sales_types')->onDelete('cascade');
-            $table->decimal('target_revenue', 20, 2);
+            $table->integer('month'); // 1 - 12
+            $table->foreignId('dim_sales_type_id')->nullable()->constrained('dim_sales_types')->onDelete('cascade');
+            $table->foreignId('dim_product_id')->nullable()->constrained('dim_products')->onDelete('cascade');
+            $table->decimal('target_revenue', 20, 2)->default(0);
+            $table->timestamps();
+
+            $table->index(['year', 'month']);
+            $table->index(['year', 'month', 'dim_sales_type_id']);
         });
     }
 

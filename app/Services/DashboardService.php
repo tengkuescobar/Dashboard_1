@@ -124,6 +124,8 @@ class DashboardService
         $month = $request->get('month', 'All');
         $quarter = $request->get('quarter', 'All');
         
+        $isFullYearOrQuarter = ($month === 'All');
+
         if ($month === 'All') {
             if ($quarter !== 'All') {
                 $q = (int) str_replace('Q', '', $quarter);
@@ -158,26 +160,46 @@ class DashboardService
             $startCarbon = Carbon::parse($startDate);
             $endCarbon = Carbon::parse($endDate);
 
-            $qTarget = DB::table('fact_targets')
-                ->join('dim_products', 'fact_targets.dim_product_id', '=', 'dim_products.id')
-                ->join('dim_sales_types', 'fact_targets.dim_sales_type_id', '=', 'dim_sales_types.id')
-                ->where('fact_targets.year', $startCarbon->year)
-                ->where('fact_targets.month', $startCarbon->month);
+            // Mathematically calculate total target over the given range month by month
+            $totalTarget = 0.0;
+            
+            $cursor = $startCarbon->copy()->startOfMonth();
+            $endMonthLimit = $endCarbon->copy()->startOfMonth();
+            
+            while ($cursor->lte($endMonthLimit)) {
+                $qTarget = DB::table('fact_targets')
+                    ->where('fact_targets.year', $cursor->year)
+                    ->where('fact_targets.month', $cursor->month)
+                    ->whereNull('fact_targets.dim_product_id');
 
-            if ($salesType) $qTarget->where('dim_sales_types.type_name', $salesType);
-            if ($category) $qTarget->where('dim_products.category', $category);
-            if ($packType) $qTarget->where('dim_products.broadband_pack_type', $packType);
-
-            $monthlyTarget = (float) $qTarget->sum('target_revenue');
-
-            $daysInMonth = $startCarbon->daysInMonth;
-            $daysPassed = $endCarbon->day;
-            $ratio = $daysInMonth > 0 ? ($daysPassed / $daysInMonth) : 1;
-            $target = $monthlyTarget * $ratio;
+                if ($salesType) {
+                    $qTarget->join('dim_sales_types', 'fact_targets.dim_sales_type_id', '=', 'dim_sales_types.id')
+                            ->where('dim_sales_types.type_name', $salesType);
+                }
+                
+                $monthlyTarget = (float) $qTarget->sum('target_revenue');
+                
+                $daysInMonth = $cursor->daysInMonth;
+                
+                $startDay = ($cursor->month === $startCarbon->month && $cursor->year === $startCarbon->year)
+                    ? $startCarbon->day
+                    : 1;
+                    
+                $endDay = ($cursor->month === $endCarbon->month && $cursor->year === $endCarbon->year)
+                    ? $endCarbon->day
+                    : $daysInMonth;
+                    
+                $activeDays = max(0, $endDay - $startDay + 1);
+                $ratio = $daysInMonth > 0 ? ($activeDays / $daysInMonth) : 1;
+                
+                $totalTarget += ($monthlyTarget * $ratio);
+                
+                $cursor->addMonth();
+            }
 
             return (object)[
                 'actual' => $actual,
-                'target' => $target
+                'target' => $totalTarget
             ];
         };
 
@@ -226,10 +248,14 @@ class DashboardService
             ];
         }
 
+        $selectedTotal = $isFullYearOrQuarter ? $totalYTD : $totalCM;
+        $selectedExisting = $isFullYearOrQuarter ? $existingYTD : $existingCM;
+        $selectedNewSales = $isFullYearOrQuarter ? $newSalesYTD : $newSalesCM;
+
         $gaugeData = [
-            ['title' => 'Revenue Total', 'actual' => floatval($totalCM->actual), 'target' => floatval($totalCM->target)],
-            ['title' => 'Revenue Existing', 'actual' => floatval($existingCM->actual), 'target' => floatval($existingCM->target)],
-            ['title' => 'Revenue New Sales', 'actual' => floatval($newSalesCM->actual), 'target' => floatval($newSalesCM->target)],
+            ['title' => 'Revenue Total', 'actual' => floatval($selectedTotal->actual), 'target' => floatval($selectedTotal->target)],
+            ['title' => 'Revenue Existing', 'actual' => floatval($selectedExisting->actual), 'target' => floatval($selectedExisting->target)],
+            ['title' => 'Revenue New Sales', 'actual' => floatval($selectedNewSales->actual), 'target' => floatval($selectedNewSales->target)],
         ];
 
         $revenueTable = [
@@ -335,7 +361,8 @@ class DashboardService
 
         $targetQuery = DB::table('fact_targets')
             ->where('fact_targets.year', $year)
-            ->whereIn('fact_targets.month', $monthNumbers);
+            ->whereIn('fact_targets.month', $monthNumbers)
+            ->whereNull('fact_targets.dim_product_id');
 
         if ($salesType) {
             $targetQuery->join('dim_sales_types', 'fact_targets.dim_sales_type_id', '=', 'dim_sales_types.id')

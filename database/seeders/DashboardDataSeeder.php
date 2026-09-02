@@ -96,10 +96,29 @@ class DashboardDataSeeder extends Seeder
         $this->command->info('Generating flat targets (10 Billion IDR/month = 120 Billion IDR/year)...');
         $factTargets = [];
         $monthlyTargetMap = [];
+        $now = Carbon::now();
 
         $years = [2024, 2025];
         foreach ($years as $year) {
             for ($month = 1; $month <= 12; $month++) {
+                
+                // 1. Insert clean Monthly Targets for the gauge CRUD
+                foreach ($salesTypes as $salesType) {
+                    $sTypeId = $salesTypeIds[$salesType];
+                    $stShare = $salesTypeShares[$salesType];
+                    
+                    $factTargets[] = [
+                        'year' => $year,
+                        'month' => $month,
+                        'dim_sales_type_id' => $sTypeId,
+                        'dim_product_id' => null, // Monthly target applies globally
+                        'target_revenue' => round($monthlyTotalTarget * $stShare, 2),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+
+                // 2. Generate monthlyTargetMap for simulating daily ACTUAL revenues breakdown
                 foreach ($categories as $category) {
                     $catMonthlyTarget = $monthlyTotalTarget * $categoryShares[$category];
 
@@ -111,29 +130,12 @@ class DashboardDataSeeder extends Seeder
                             foreach ($broadbandPacks as $pack) {
                                 $pId = $productIds["$category-$pack"];
                                 $packShare = $packShares[$pack];
-
                                 $targetAmount = round($catMonthlyTarget * $packShare * $stShare, 2);
-
-                                $factTargets[] = [
-                                    'year' => $year,
-                                    'month' => $month,
-                                    'dim_product_id' => $pId,
-                                    'dim_sales_type_id' => $sTypeId,
-                                    'target_revenue' => $targetAmount,
-                                ];
                                 $monthlyTargetMap["{$year}-{$month}-{$pId}-{$sTypeId}"] = $targetAmount;
                             }
                         } else {
                             $pId = $productIds["$category-"];
                             $targetAmount = round($catMonthlyTarget * $stShare, 2);
-
-                            $factTargets[] = [
-                                'year' => $year,
-                                'month' => $month,
-                                'dim_product_id' => $pId,
-                                'dim_sales_type_id' => $sTypeId,
-                                'target_revenue' => $targetAmount,
-                            ];
                             $monthlyTargetMap["{$year}-{$month}-{$pId}-{$sTypeId}"] = $targetAmount;
                         }
                     }
