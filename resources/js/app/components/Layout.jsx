@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { Outlet, useSearchParams } from "react-router-dom";
-import { Sun, Moon, Calendar, ChevronDown, RefreshCw } from "lucide-react";
+import { Sun, Moon, Calendar, ChevronDown } from "lucide-react";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 import { ChartDetailPopover } from "../DashboardComponents";
@@ -116,7 +116,6 @@ function DateFilters({ dateFilter, setDateFilter }) {
 // ── Main Layout ────────────────────────────────────────────────────────────
 export default function Layout() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("theme");
@@ -153,19 +152,6 @@ export default function Layout() {
     });
   }, [setSearchParams]);
 
-  // Handle cache refresh — clears server cache then reloads the page
-  const handleRefreshCache = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await axios.post("/api/cache/clear");
-      // Force reload the current page to re-fetch fresh data
-      window.location.reload();
-    } catch (err) {
-      console.error("Failed to clear cache:", err);
-      setIsRefreshing(false);
-    }
-  }, []);
-
   useEffect(() => {
     localStorage.setItem("theme", isDark ? "dark" : "light");
     if (isDark) {
@@ -199,15 +185,6 @@ export default function Layout() {
 
             <div className="flex items-center gap-3">
               <DateFilters dateFilter={dateFilter} setDateFilter={setDateFilter} />
-              <button
-                onClick={handleRefreshCache}
-                disabled={isRefreshing}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                style={{ background: "var(--dt-pill-bg)", border: "1px solid var(--dt-pill-border)", color: "var(--dt-text-2)" }}
-                title="Refresh data (clear cache)"
-              >
-                <RefreshCw size={15} className={isRefreshing ? "animate-spin" : ""} />
-              </button>
               <button onClick={() => setIsDark((d) => !d)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                 style={{ background: "var(--dt-pill-bg)", border: "1px solid var(--dt-pill-border)", color: "var(--dt-text-2)" }}

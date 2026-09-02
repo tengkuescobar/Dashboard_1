@@ -141,185 +141,208 @@ class DashboardService
         $ytdRange = $this->getDateRange($year, $month, 'ytd');
         $pytdRange = $this->getDateRange($year, $month, 'prev_ytd');
 
-        $getRev = function($range, $salesType = null, $category = null, $packType = null) {
-            $startDate = $range[0];
-            $endDate = $range[1];
+        // ══════════════════════════════════════════════════════════════════════
+        // STEP 1: Batch-fetch ALL revenue data — 5 queries with GROUP BY
+        //         (replaces ~80 individual queries)
+        // ══════════════════════════════════════════════════════════════════════
+        $periods = [
+            'cm' => $cmRange,
+            'pm' => $pmRange,
+            'pym' => $pymRange,
+            'ytd' => $ytdRange,
+            'pytd' => $pytdRange,
+        ];
 
-            $qActual = DB::table('fact_revenues')
+        $revData = [];
+        foreach ($periods as $key => $range) {
+            $revData[$key] = DB::table('fact_revenues')
                 ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
                 ->join('dim_products', 'fact_revenues.dim_product_id', '=', 'dim_products.id')
                 ->join('dim_sales_types', 'fact_revenues.dim_sales_type_id', '=', 'dim_sales_types.id')
-                ->whereBetween('dim_dates.date', [$startDate, $endDate]);
-            
-            if ($salesType) $qActual->where('dim_sales_types.type_name', $salesType);
-            if ($category) $qActual->where('dim_products.category', $category);
-            if ($packType) $qActual->where('dim_products.broadband_pack_type', $packType);
-            
-            $actual = (float) $qActual->sum('actual_revenue');
+                ->whereBetween('dim_dates.date', $range)
+                ->select(
+                    'dim_products.category',
+                    'dim_sales_types.type_name as sales_type',
+                    'dim_products.broadband_pack_type as pack_type',
+                    DB::raw('SUM(actual_revenue) as total')
+                )
+                ->groupBy('dim_products.category', 'dim_sales_types.type_name', 'dim_products.broadband_pack_type')
+                ->get();
+        }
 
-            $startCarbon = Carbon::parse($startDate);
-            $endCarbon = Carbon::parse($endDate);
+        // Helper: extract revenue from pre-fetched grouped data (no DB query!)
+        $actual = function (string $period, ?string $salesType = null, ?string $category = null, ?string $packType = null) use ($revData): float {
+            $rows = $revData[$period];
+            if ($salesType !== null) $rows = $rows->where('sales_type', $salesType);
+            if ($category !== null) $rows = $rows->where('category', $category);
+            if ($packType !== null) $rows = $rows->where('pack_type', $packType);
+            return (float) $rows->sum('total');
+        };
 
-            // Mathematically calculate total target over the given range month by month
+        // ══════════════════════════════════════════════════════════════════════
+        // STEP 2: Batch-fetch ALL targets — 1 query (replaces ~40 queries)
+        // ══════════════════════════════════════════════════════════════════════
+        $allTargets = DB::table('fact_targets')
+            ->leftJoin('dim_sales_types', 'fact_targets.dim_sales_type_id', '=', 'dim_sales_types.id')
+            ->whereNull('fact_targets.dim_product_id')
+            ->whereIn('fact_targets.year', array_unique([$year - 1, (int) $year]))
+            ->select(
+                'fact_targets.year',
+                'fact_targets.month',
+                'dim_sales_types.type_name as sales_type',
+                'fact_targets.target_revenue'
+            )
+            ->get();
+
+        // Helper: calculate pro-rated target for any date range (no DB query!)
+        $target = function (array $range, ?string $salesType = null) use ($allTargets): float {
+            $startCarbon = Carbon::parse($range[0]);
+            $endCarbon = Carbon::parse($range[1]);
             $totalTarget = 0.0;
-            
+
             $cursor = $startCarbon->copy()->startOfMonth();
             $endMonthLimit = $endCarbon->copy()->startOfMonth();
-            
-            while ($cursor->lte($endMonthLimit)) {
-                $qTarget = DB::table('fact_targets')
-                    ->where('fact_targets.year', $cursor->year)
-                    ->where('fact_targets.month', $cursor->month)
-                    ->whereNull('fact_targets.dim_product_id');
 
-                if ($salesType) {
-                    $qTarget->join('dim_sales_types', 'fact_targets.dim_sales_type_id', '=', 'dim_sales_types.id')
-                            ->where('dim_sales_types.type_name', $salesType);
+            while ($cursor->lte($endMonthLimit)) {
+                $filtered = $allTargets
+                    ->where('year', $cursor->year)
+                    ->where('month', $cursor->month);
+                if ($salesType !== null) {
+                    $filtered = $filtered->where('sales_type', $salesType);
                 }
-                
-                $monthlyTarget = (float) $qTarget->sum('target_revenue');
-                
+                $monthlyTarget = (float) $filtered->sum('target_revenue');
+
                 $daysInMonth = $cursor->daysInMonth;
-                
                 $startDay = ($cursor->month === $startCarbon->month && $cursor->year === $startCarbon->year)
-                    ? $startCarbon->day
-                    : 1;
-                    
+                    ? $startCarbon->day : 1;
                 $endDay = ($cursor->month === $endCarbon->month && $cursor->year === $endCarbon->year)
-                    ? $endCarbon->day
-                    : $daysInMonth;
-                    
+                    ? $endCarbon->day : $daysInMonth;
                 $activeDays = max(0, $endDay - $startDay + 1);
                 $ratio = $daysInMonth > 0 ? ($activeDays / $daysInMonth) : 1;
-                
+
                 $totalTarget += ($monthlyTarget * $ratio);
-                
                 $cursor->addMonth();
             }
 
-            return (object)[
-                'actual' => $actual,
-                'target' => $totalTarget
-            ];
+            return $totalTarget;
         };
 
-        $totalCM = $getRev($cmRange);
-        $existingCM = $getRev($cmRange, 'BAU');
-        $newSalesCM = $getRev($cmRange, 'New Sales');
-        
-        $totalPM = $getRev($pmRange);
-        $totalPYM = $getRev($pymRange);
-        $totalYTD = $getRev($ytdRange);
+        // ══════════════════════════════════════════════════════════════════════
+        // STEP 3: Batch-fetch ALL driver data — 4 queries (replaces 20 queries)
+        // ══════════════════════════════════════════════════════════════════════
+        $driverPeriods = ['cm' => $cmRange, 'pm' => $pmRange, 'pym' => $pymRange, 'ytd' => $ytdRange];
+        $drvData = [];
+        foreach ($driverPeriods as $key => $range) {
+            $drvData[$key] = DB::table('fact_drivers')
+                ->join('dim_dates', 'fact_drivers.dim_date_id', '=', 'dim_dates.id')
+                ->join('dim_metrics', 'fact_drivers.dim_metric_id', '=', 'dim_metrics.id')
+                ->whereBetween('dim_dates.date', $range)
+                ->select('dim_metrics.metric_name', DB::raw('SUM(value) as total'))
+                ->groupBy('dim_metrics.metric_name')
+                ->get();
+        }
 
-        $existingPM = $getRev($pmRange, 'BAU');
-        $existingPYM = $getRev($pymRange, 'BAU');
-        $existingYTD = $getRev($ytdRange, 'BAU');
-        
-        $newSalesPM = $getRev($pmRange, 'New Sales');
-        $newSalesPYM = $getRev($pymRange, 'New Sales');
-        $newSalesYTD = $getRev($ytdRange, 'New Sales');
-        
-        $bbCM = $getRev($cmRange, null, 'Broadband');
-        $bbPM = $getRev($pmRange, null, 'Broadband');
-        $bbPYM = $getRev($pymRange, null, 'Broadband');
-        $bbYTD = $getRev($ytdRange, null, 'Broadband');
-
-        $calcPct = function($val, $prev) {
+        // ══════════════════════════════════════════════════════════════════════
+        // BUILD RESPONSE — all from PHP memory, zero additional DB queries
+        // ══════════════════════════════════════════════════════════════════════
+        $calcPct = function ($val, $prev) {
             return $prev > 0 ? round((($val - $prev) / $prev) * 100, 1) : 0;
         };
 
-        $mom = $calcPct($totalCM->actual, $totalPM->actual);
-        $yoy = $calcPct($totalCM->actual, $totalPYM->actual);
+        // Revenue actuals
+        $totalCM = $actual('cm');
+        $existingCM = $actual('cm', 'BAU');
+        $newSalesCM = $actual('cm', 'New Sales');
+        $totalPM = $actual('pm');
+        $totalPYM = $actual('pym');
+        $totalYTD = $actual('ytd');
+        $existingPM = $actual('pm', 'BAU');
+        $existingPYM = $actual('pym', 'BAU');
+        $existingYTD = $actual('ytd', 'BAU');
+        $newSalesPM = $actual('pm', 'New Sales');
+        $newSalesPYM = $actual('pym', 'New Sales');
+        $newSalesYTD = $actual('ytd', 'New Sales');
+        $bbCM = $actual('cm', null, 'Broadband');
+        $bbPM = $actual('pm', null, 'Broadband');
+        $bbPYM = $actual('pym', null, 'Broadband');
+        $bbYTD = $actual('ytd', null, 'Broadband');
 
+        // Targets (only needed for gauge)
+        $totalCM_t = $target($cmRange);
+        $existingCM_t = $target($cmRange, 'BAU');
+        $newSalesCM_t = $target($cmRange, 'New Sales');
+        $totalYTD_t = $target($ytdRange);
+        $existingYTD_t = $target($ytdRange, 'BAU');
+        $newSalesYTD_t = $target($ytdRange, 'New Sales');
+
+        $mom = $calcPct($totalCM, $totalPM);
+        $yoy = $calcPct($totalCM, $totalPYM);
+
+        // Breakdown by category
         $categories = ['Broadband', 'Digital', 'IR', 'Voice', 'SMS', 'Others'];
         $breakdown = [];
         foreach ($categories as $cat) {
-            $catCM = $getRev($cmRange, null, $cat)->actual;
-            $catPM = $getRev($pmRange, null, $cat)->actual;
-            $catPYM = $getRev($pymRange, null, $cat)->actual;
-            $catYTD = $getRev($ytdRange, null, $cat)->actual;
-            $catPYTD = $getRev($pytdRange, null, $cat)->actual;
+            $catCM = $actual('cm', null, $cat);
+            $catPM = $actual('pm', null, $cat);
+            $catPYM = $actual('pym', null, $cat);
+            $catYTD = $actual('ytd', null, $cat);
+            $catPYTD = $actual('pytd', null, $cat);
 
             $breakdown[] = [
                 'name' => $cat,
-                'mom' => $catPM > 0 ? round((($catCM - $catPM) / $catPM) * 100, 1) : 0,
-                'yoy' => $catPYM > 0 ? round((($catCM - $catPYM) / $catPYM) * 100, 1) : 0,
-                'ytd' => $catPYTD > 0 ? round((($catYTD - $catPYTD) / $catPYTD) * 100, 1) : 0,
+                'mom' => $calcPct($catCM, $catPM),
+                'yoy' => $calcPct($catCM, $catPYM),
+                'ytd' => $calcPct($catYTD, $catPYTD),
             ];
         }
 
-        $selectedTotal = $isFullYearOrQuarter ? $totalYTD : $totalCM;
-        $selectedExisting = $isFullYearOrQuarter ? $existingYTD : $existingCM;
-        $selectedNewSales = $isFullYearOrQuarter ? $newSalesYTD : $newSalesCM;
+        // Gauge data
+        $selActual = $isFullYearOrQuarter ? $totalYTD : $totalCM;
+        $selTarget = $isFullYearOrQuarter ? $totalYTD_t : $totalCM_t;
+        $selExAct = $isFullYearOrQuarter ? $existingYTD : $existingCM;
+        $selExTgt = $isFullYearOrQuarter ? $existingYTD_t : $existingCM_t;
+        $selNsAct = $isFullYearOrQuarter ? $newSalesYTD : $newSalesCM;
+        $selNsTgt = $isFullYearOrQuarter ? $newSalesYTD_t : $newSalesCM_t;
 
         $gaugeData = [
-            ['title' => 'Revenue Total', 'actual' => floatval($selectedTotal->actual), 'target' => floatval($selectedTotal->target)],
-            ['title' => 'Revenue Existing', 'actual' => floatval($selectedExisting->actual), 'target' => floatval($selectedExisting->target)],
-            ['title' => 'Revenue New Sales', 'actual' => floatval($selectedNewSales->actual), 'target' => floatval($selectedNewSales->target)],
+            ['title' => 'Revenue Total', 'actual' => $selActual, 'target' => $selTarget],
+            ['title' => 'Revenue Existing', 'actual' => $selExAct, 'target' => $selExTgt],
+            ['title' => 'Revenue New Sales', 'actual' => $selNsAct, 'target' => $selNsTgt],
         ];
 
+        // Revenue table
         $revenueTable = [
-            [
-                'label' => 'Total',
-                'mtd' => floatval($totalCM->actual),
-                'mom' => round($mom, 1),
-                'yoy' => round($yoy, 1),
-                'ytd' => floatval($totalYTD->actual),
-            ],
-            [
-                'label' => 'Existing',
-                'mtd' => floatval($existingCM->actual),
-                'mom' => $calcPct($existingCM->actual, $existingPM->actual),
-                'yoy' => $calcPct($existingCM->actual, $existingPYM->actual),
-                'ytd' => floatval($existingYTD->actual),
-            ],
-            [
-                'label' => 'New Sales',
-                'mtd' => floatval($newSalesCM->actual),
-                'mom' => $calcPct($newSalesCM->actual, $newSalesPM->actual),
-                'yoy' => $calcPct($newSalesCM->actual, $newSalesPYM->actual),
-                'ytd' => floatval($newSalesYTD->actual),
-            ],
-            [
-                'label' => 'Broadband',
-                'mtd' => floatval($bbCM->actual),
-                'mom' => $calcPct($bbCM->actual, $bbPM->actual),
-                'yoy' => $calcPct($bbCM->actual, $bbPYM->actual),
-                'ytd' => floatval($bbYTD->actual),
-            ],
+            ['label' => 'Total', 'mtd' => $totalCM, 'mom' => $mom, 'yoy' => $yoy, 'ytd' => $totalYTD],
+            ['label' => 'Existing', 'mtd' => $existingCM, 'mom' => $calcPct($existingCM, $existingPM), 'yoy' => $calcPct($existingCM, $existingPYM), 'ytd' => $existingYTD],
+            ['label' => 'New Sales', 'mtd' => $newSalesCM, 'mom' => $calcPct($newSalesCM, $newSalesPM), 'yoy' => $calcPct($newSalesCM, $newSalesPYM), 'ytd' => $newSalesYTD],
+            ['label' => 'Broadband', 'mtd' => $bbCM, 'mom' => $calcPct($bbCM, $bbPM), 'yoy' => $calcPct($bbCM, $bbPYM), 'ytd' => $bbYTD],
         ];
 
+        // Broadband pack table
         $bbPacks = ['Total BBA' => null, 'CVM (BTL)' => 'CVM(BTL)', 'Physical Voucher' => 'Physical Voucher', 'Core' => 'Core'];
         $bbPackTable = [];
         foreach ($bbPacks as $label => $packType) {
-            $val = $getRev($cmRange, null, 'Broadband', $packType)->actual;
-            $pmVal = $getRev($pmRange, null, 'Broadband', $packType)->actual;
-            $pymVal = $getRev($pymRange, null, 'Broadband', $packType)->actual;
-            $ytdVal = $getRev($ytdRange, null, 'Broadband', $packType)->actual;
+            $val = $actual('cm', null, 'Broadband', $packType);
+            $pmVal = $actual('pm', null, 'Broadband', $packType);
+            $pymVal = $actual('pym', null, 'Broadband', $packType);
+            $ytdVal = $actual('ytd', null, 'Broadband', $packType);
             $bbPackTable[] = [
                 'label' => $label,
-                'mtd' => floatval($val),
+                'mtd' => $val,
                 'mom' => $calcPct($val, $pmVal),
                 'yoy' => $calcPct($val, $pymVal),
-                'ytd' => floatval($ytdVal),
+                'ytd' => $ytdVal,
             ];
         }
 
+        // Driver table
         $driverMetrics = ['Playing User', 'Payload User', 'Payload All', 'Trx New Sales', 'Sell Out'];
         $driverTable = [];
         foreach ($driverMetrics as $metric) {
-            $getDriver = function($range) use ($metric) {
-                return DB::table('fact_drivers')
-                    ->join('dim_dates', 'fact_drivers.dim_date_id', '=', 'dim_dates.id')
-                    ->join('dim_metrics', 'fact_drivers.dim_metric_id', '=', 'dim_metrics.id')
-                    ->where('dim_metrics.metric_name', $metric)
-                    ->whereBetween('dim_dates.date', $range)
-                    ->sum('value');
-            };
-            $val = $getDriver($cmRange);
-            $pmVal = $getDriver($pmRange);
-            $pymVal = $getDriver($pymRange);
-            $ytdVal = $getDriver($ytdRange);
+            $val = (float) ($drvData['cm']->firstWhere('metric_name', $metric)?->total ?? 0);
+            $pmVal = (float) ($drvData['pm']->firstWhere('metric_name', $metric)?->total ?? 0);
+            $pymVal = (float) ($drvData['pym']->firstWhere('metric_name', $metric)?->total ?? 0);
+            $ytdVal = (float) ($drvData['ytd']->firstWhere('metric_name', $metric)?->total ?? 0);
             $driverTable[] = [
                 'label' => $metric,
                 'mtd' => round($val, 2),
