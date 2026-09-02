@@ -137,14 +137,16 @@ export function IndonesiaGeoChart() {
 
       <div className="relative flex-1 bg-[#f8fcfd] dark:bg-black/20 rounded-xl border border-blue-500/10 overflow-hidden flex flex-col items-center justify-center p-2 min-h-[300px]">
         {/* SVG Map via react-simple-maps */}
-        <div className="w-full h-full max-w-4xl max-h-[400px]">
+        <div className="w-full h-full max-w-4xl flex items-center justify-center">
           <ComposableMap
             projection="geoMercator"
             projectionConfig={{
-              scale: 1100,
-              center: [118, -2]
+              scale: 1300,
+              center: [118, -2.5]
             }}
-            style={{ width: "100%", height: "100%" }}
+            width={800}
+            height={320}
+            style={{ width: "100%", height: "auto" }}
           >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
@@ -152,12 +154,20 @@ export function IndonesiaGeoChart() {
                   const provinceName = geo.properties.Propinsi || geo.properties.name || geo.properties.NAME_1 || "";
                   const areaName = getAreaForProvince(provinceName);
                   
-                  // Use light color by default, highlight if hovered
+                  // If a global area filter is active, highlight ONLY that area.
+                  // Otherwise, show light colors, and bright on hover.
+                  const isHovered = hoveredArea === areaName;
+                  const isFiltered = dateFilter.area !== "All" && dateFilter.area === areaName;
+                  const isDimmed = dateFilter.area !== "All" && dateFilter.area !== areaName;
+
                   const baseColor = areaName ? AREA_COLORS_LIGHT[areaName] : "#e2e8f0";
                   const activeColor = areaName ? AREA_COLORS[areaName] : "#cbd5e1";
-                  
-                  const isHovered = hoveredArea === areaName;
-                  const fill = isHovered ? activeColor : baseColor;
+                  const dimColor = "#f1f5f9"; // very light gray for non-selected areas
+
+                  let fill = baseColor;
+                  if (isFiltered) fill = activeColor;
+                  else if (isDimmed) fill = dimColor;
+                  else if (isHovered) fill = activeColor;
 
                   return (
                     <Geography
@@ -244,18 +254,22 @@ export function IndonesiaGeoChart() {
       </div>
 
       {/* Area Legend Bar */}
-      <div className="flex items-center gap-3 mt-4 flex-wrap justify-center p-2 rounded-lg" style={{ background: "var(--dt-bg)" }}>
+      <div className="flex items-center gap-3 mt-2 mb-2 flex-wrap justify-center p-2 rounded-lg" style={{ background: "var(--dt-bg)" }}>
         {data.map((area) => {
           const pct = grandTotal > 0 ? ((area.total / grandTotal) * 100).toFixed(1) : 0;
           const color = AREA_COLORS[area.area];
+          const isSelected = dateFilter.area === area.area;
+          const isDimmed = dateFilter.area !== "All" && dateFilter.area !== area.area;
+
           return (
             <div
               key={area.area}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-transform hover:scale-105 cursor-pointer"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-transform cursor-pointer ${isSelected ? 'scale-110 shadow-md ring-2 ring-offset-1' : (isDimmed ? 'opacity-50' : 'hover:scale-105')}`}
               style={{
-                background: "var(--dt-card)",
+                background: isSelected ? `${color}15` : "var(--dt-card)",
                 border: `1.5px solid ${color}`,
                 color: "var(--dt-text-1)",
+                ringColor: color,
               }}
               onMouseEnter={() => setHoveredArea(area.area)}
               onMouseLeave={() => setHoveredArea(null)}
