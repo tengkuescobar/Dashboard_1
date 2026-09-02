@@ -26,7 +26,7 @@ export function GaugeChart({ title, actual, target }) {
   return <Card className="flex flex-col items-center text-center">
     <p className="text-xs font-semibold mb-1" style={{ color: "var(--dt-text-2)" }}>{title}</p>
 
-    <svg width={188} height={140} viewBox="0 0 188 140">
+    <svg width={188} height={140} viewBox="0 0 188 140" style={{ overflow: "visible" }}>
       <defs>
         <linearGradient
           id={`zone-lo-${id}`}
@@ -116,7 +116,7 @@ export function GaugeChart({ title, actual, target }) {
         y1={tgtInner.y}
         x2={tgtOuter.x}
         y2={tgtOuter.y}
-        stroke="var(--dt-text-1)"
+        style={{ stroke: "var(--dt-text-1)" }}
         strokeWidth={3}
         strokeLinecap="round"
         opacity={0.6}
@@ -126,9 +126,9 @@ export function GaugeChart({ title, actual, target }) {
         x={tgtLabel.x}
         y={tgtLabel.y - 2}
         textAnchor="middle"
-        fontSize={7}
+        fontSize={8}
         fontWeight={700}
-        fill="var(--dt-text-3)"
+        style={{ fill: "var(--dt-text-3)" }}
         opacity={0.9}
         fontFamily="Inter, sans-serif"
       >TARGET</text>
@@ -136,9 +136,9 @@ export function GaugeChart({ title, actual, target }) {
         x={tgtLabel.x}
         y={tgtLabel.y + 8}
         textAnchor="middle"
-        fontSize={8}
-        fontWeight={700}
-        fill="var(--dt-text-1)"
+        fontSize={10}
+        fontWeight={800}
+        style={{ fill: "var(--dt-text-1)" }}
         opacity={0.9}
         fontFamily="DM Mono, monospace"
       >{formatValue(safeTarget)}</text>
