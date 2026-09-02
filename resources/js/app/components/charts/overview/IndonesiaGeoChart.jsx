@@ -1,39 +1,27 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { MapPin } from "lucide-react";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { useDateFilter } from "../../Layout";
 import { Card, SectionTitle } from "../../ui/ChartUIComponents";
 import { ChartSkeleton } from "../../ui/skeleton";
 import { formatValue } from "../../../utils/formatters";
 
+// Use a simplified GeoJSON for Indonesia provinces
+const GEO_URL = "https://raw.githubusercontent.com/superpikar/indonesia-geojson/master/indonesia-province-simple.json";
+
 const AREA_COLORS = {
   "Area 1 Sumatera": "#3B82F6",
-  "Area 2 Jabotabek": "#F59E0B",
-  "Area 3 Jawa Bali": "#10B981",
-  "Area 4 Pamasuka": "#8B5CF6",
+  "Area 2 Jabotabek": "#E11D48", // Changed to pink/reddish as requested
+  "Area 3 Jawa Bali": "#0F766E", // Changed to teal/dark green as requested
+  "Area 4 Pamasuka": "#F97316", // Orange as requested
 };
 
 const AREA_COLORS_LIGHT = {
-  "Area 1 Sumatera": "rgba(59,130,246,0.15)",
-  "Area 2 Jabotabek": "rgba(245,158,11,0.15)",
-  "Area 3 Jawa Bali": "rgba(16,185,129,0.15)",
-  "Area 4 Pamasuka": "rgba(139,92,246,0.15)",
-};
-
-// Simplified SVG paths for Indonesia's 4 areas
-const AREA_PATHS = {
-  "Area 1 Sumatera": "M 30 55 L 45 30 L 70 25 L 85 40 L 95 60 L 90 85 L 75 105 L 55 115 L 35 100 L 25 80 Z",
-  "Area 2 Jabotabek": "M 100 65 L 115 55 L 140 50 L 155 55 L 160 70 L 155 90 L 140 100 L 120 95 L 105 85 Z",
-  "Area 3 Jawa Bali": "M 165 60 L 190 52 L 220 50 L 250 55 L 270 60 L 275 75 L 260 90 L 230 95 L 200 90 L 175 85 L 165 75 Z",
-  "Area 4 Pamasuka": "M 280 35 L 310 20 L 350 15 L 380 25 L 395 40 L 390 60 L 375 80 L 350 95 L 320 100 L 295 90 L 280 70 L 275 50 Z",
-};
-
-// Label positions for each area
-const AREA_LABELS = {
-  "Area 1 Sumatera": { x: 60, y: 65 },
-  "Area 2 Jabotabek": { x: 130, y: 72 },
-  "Area 3 Jawa Bali": { x: 218, y: 70 },
-  "Area 4 Pamasuka": { x: 338, y: 55 },
+  "Area 1 Sumatera": "rgba(59,130,246,0.3)",
+  "Area 2 Jabotabek": "rgba(225,29,72,0.3)",
+  "Area 3 Jawa Bali": "rgba(15,118,110,0.3)",
+  "Area 4 Pamasuka": "rgba(249,115,22,0.3)",
 };
 
 const SHORT_NAMES = {
@@ -43,6 +31,73 @@ const SHORT_NAMES = {
   "Area 4 Pamasuka": "Pamasuka",
 };
 
+// Map provinces to 4 Telkomsel Areas
+const PROVINCE_TO_AREA = {
+  // Sumatera
+  "ACEH": "Area 1 Sumatera",
+  "SUMATERA UTARA": "Area 1 Sumatera",
+  "SUMATERA BARAT": "Area 1 Sumatera",
+  "RIAU": "Area 1 Sumatera",
+  "JAMBI": "Area 1 Sumatera",
+  "SUMATERA SELATAN": "Area 1 Sumatera",
+  "BENGKULU": "Area 1 Sumatera",
+  "LAMPUNG": "Area 1 Sumatera",
+  "KEPULAUAN BANGKA BELITUNG": "Area 1 Sumatera",
+  "KEPULAUAN RIAU": "Area 1 Sumatera",
+  "NANGGROE ACEH DARUSSALAM": "Area 1 Sumatera",
+  "BANGKA BELITUNG": "Area 1 Sumatera",
+  
+  // Jabotabek
+  "DKI JAKARTA": "Area 2 Jabotabek",
+  "JAKARTA RAYA": "Area 2 Jabotabek",
+  "JAWA BARAT": "Area 2 Jabotabek",
+  "BANTEN": "Area 2 Jabotabek",
+  
+  // Jawa Bali
+  "JAWA TENGAH": "Area 3 Jawa Bali",
+  "DI YOGYAKARTA": "Area 3 Jawa Bali",
+  "YOGYAKARTA": "Area 3 Jawa Bali",
+  "JAWA TIMUR": "Area 3 Jawa Bali",
+  "BALI": "Area 3 Jawa Bali",
+  "NUSA TENGGARA BARAT": "Area 3 Jawa Bali",
+  "NUSA TENGGARA TIMUR": "Area 3 Jawa Bali",
+  
+  // Pamasuka (Kalimantan, Sulawesi, Maluku, Papua)
+  "KALIMANTAN BARAT": "Area 4 Pamasuka",
+  "KALIMANTAN TENGAH": "Area 4 Pamasuka",
+  "KALIMANTAN SELATAN": "Area 4 Pamasuka",
+  "KALIMANTAN TIMUR": "Area 4 Pamasuka",
+  "KALIMANTAN UTARA": "Area 4 Pamasuka",
+  "SULAWESI UTARA": "Area 4 Pamasuka",
+  "SULAWESI TENGAH": "Area 4 Pamasuka",
+  "SULAWESI SELATAN": "Area 4 Pamasuka",
+  "SULAWESI TENGGARA": "Area 4 Pamasuka",
+  "GORONTALO": "Area 4 Pamasuka",
+  "SULAWESI BARAT": "Area 4 Pamasuka",
+  "MALUKU": "Area 4 Pamasuka",
+  "MALUKU UTARA": "Area 4 Pamasuka",
+  "PAPUA BARAT": "Area 4 Pamasuka",
+  "PAPUA": "Area 4 Pamasuka",
+  "PAPUA SELATAN": "Area 4 Pamasuka",
+  "PAPUA TENGAH": "Area 4 Pamasuka",
+  "PAPUA PEGUNUNGAN": "Area 4 Pamasuka",
+  "PAPUA BARAT DAYA": "Area 4 Pamasuka",
+  "IRIAN JAYA TIMUR": "Area 4 Pamasuka",
+  "IRIAN JAYA TENGAH": "Area 4 Pamasuka",
+  "IRIAN JAYA BARAT": "Area 4 Pamasuka"
+};
+
+// Helper to resolve province name to Area
+const getAreaForProvince = (propName) => {
+  if (!propName) return null;
+  const name = propName.toUpperCase();
+  for (const [key, area] of Object.entries(PROVINCE_TO_AREA)) {
+    if (name.includes(key)) return area;
+  }
+  return null;
+};
+
+// Main Component
 export function IndonesiaGeoChart() {
   const { dateFilter } = useDateFilter();
   const [data, setData] = useState([]);
@@ -71,91 +126,83 @@ export function IndonesiaGeoChart() {
     return (
       <Card>
         <SectionTitle icon={MapPin} label="Revenue by Area" />
-        <ChartSkeleton height={200} />
+        <ChartSkeleton height={300} />
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <SectionTitle icon={MapPin} label="Revenue by Area" />
 
-      <div className="relative">
-        {/* SVG Map */}
-        <svg
-          viewBox="0 0 420 120"
-          className="w-full"
-          style={{ maxHeight: 180 }}
-        >
-          {/* Sea background */}
-          <rect x="0" y="0" width="420" height="120" rx="8" fill="none" />
+      <div className="relative flex-1 bg-[#f8fcfd] dark:bg-black/20 rounded-xl border border-blue-500/10 overflow-hidden flex flex-col items-center justify-center p-2 min-h-[300px]">
+        {/* SVG Map via react-simple-maps */}
+        <div className="w-full h-full max-w-4xl max-h-[400px]">
+          <ComposableMap
+            projection="geoMercator"
+            projectionConfig={{
+              scale: 1100,
+              center: [118, -2]
+            }}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <Geographies geography={GEO_URL}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const provinceName = geo.properties.Propinsi || geo.properties.name || geo.properties.NAME_1 || "";
+                  const areaName = getAreaForProvince(provinceName);
+                  
+                  // Use light color by default, highlight if hovered
+                  const baseColor = areaName ? AREA_COLORS_LIGHT[areaName] : "#e2e8f0";
+                  const activeColor = areaName ? AREA_COLORS[areaName] : "#cbd5e1";
+                  
+                  const isHovered = hoveredArea === areaName;
+                  const fill = isHovered ? activeColor : baseColor;
 
-          {Object.entries(AREA_PATHS).map(([areaName, path]) => {
-            const areaData = data.find((d) => d.area === areaName);
-            const revenue = areaData?.total || 0;
-            const pct = grandTotal > 0 ? ((revenue / grandTotal) * 100).toFixed(1) : 0;
-            const color = AREA_COLORS[areaName];
-            const isHovered = hoveredArea === areaName;
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={fill}
+                      stroke="#ffffff"
+                      strokeWidth={isHovered ? 1.5 : 0.5}
+                      style={{
+                        default: { outline: "none", transition: "all 0.3s" },
+                        hover: { outline: "none", fill: activeColor, transition: "all 0.3s", cursor: "pointer" },
+                        pressed: { outline: "none" },
+                      }}
+                      onMouseEnter={(e) => {
+                        if (areaName) {
+                          setHoveredArea(areaName);
+                          const rect = e.currentTarget.closest("svg").getBoundingClientRect();
+                          setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10 });
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (areaName) {
+                          const rect = e.currentTarget.closest("svg").getBoundingClientRect();
+                          setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10 });
+                        }
+                      }}
+                      onMouseLeave={() => setHoveredArea(null)}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+          </ComposableMap>
+        </div>
 
-            return (
-              <g key={areaName}>
-                <path
-                  d={path}
-                  fill={isHovered ? color : AREA_COLORS_LIGHT[areaName]}
-                  stroke={color}
-                  strokeWidth={isHovered ? 2.5 : 1.5}
-                  style={{
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    filter: isHovered ? `drop-shadow(0 0 8px ${color}60)` : "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    setHoveredArea(areaName);
-                    const rect = e.currentTarget.closest("svg").getBoundingClientRect();
-                    setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10 });
-                  }}
-                  onMouseMove={(e) => {
-                    const rect = e.currentTarget.closest("svg").getBoundingClientRect();
-                    setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10 });
-                  }}
-                  onMouseLeave={() => setHoveredArea(null)}
-                />
-                {/* Area label */}
-                <text
-                  x={AREA_LABELS[areaName].x}
-                  y={AREA_LABELS[areaName].y - 4}
-                  textAnchor="middle"
-                  fontSize="7"
-                  fontWeight="700"
-                  style={{ fill: color, pointerEvents: "none" }}
-                >
-                  {SHORT_NAMES[areaName]}
-                </text>
-                <text
-                  x={AREA_LABELS[areaName].x}
-                  y={AREA_LABELS[areaName].y + 7}
-                  textAnchor="middle"
-                  fontSize="6"
-                  fontWeight="600"
-                  style={{ fill: "var(--dt-text-2)", pointerEvents: "none" }}
-                  fontFamily="DM Mono, monospace"
-                >
-                  {pct}%
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Tooltip */}
+        {/* Custom Tooltip */}
         {hoveredArea && (() => {
           const areaData = data.find((d) => d.area === hoveredArea);
           if (!areaData) return null;
           const pct = grandTotal > 0 ? ((areaData.total / grandTotal) * 100).toFixed(1) : 0;
+          const color = AREA_COLORS[hoveredArea];
 
           return (
             <div
-              className="absolute z-50 pointer-events-none"
+              className="absolute z-50 pointer-events-none transition-transform"
               style={{
                 left: tooltipPos.x,
                 top: tooltipPos.y,
@@ -163,22 +210,26 @@ export function IndonesiaGeoChart() {
               }}
             >
               <div
-                className="p-3 rounded-xl shadow-xl text-xs min-w-[180px]"
+                className="p-3.5 rounded-xl shadow-2xl text-xs min-w-[200px] backdrop-blur-md"
                 style={{
                   background: "var(--dt-card)",
-                  border: `2px solid ${AREA_COLORS[hoveredArea]}`,
+                  border: `2px solid ${color}`,
                 }}
               >
-                <p className="font-bold mb-2" style={{ color: AREA_COLORS[hoveredArea] }}>
-                  {hoveredArea}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 rounded-full" style={{ background: color }} />
+                  <p className="font-bold text-sm" style={{ color }}>{hoveredArea}</p>
+                </div>
+                
+                <p className="mb-3 flex justify-between items-center" style={{ color: "var(--dt-text-2)" }}>
+                  <span>Total Revenue:</span>
+                  <span className="font-bold text-sm" style={{ color: "var(--dt-text-1)" }}>Rp {formatValue(areaData.total)}</span>
                 </p>
-                <p className="mb-1" style={{ color: "var(--dt-text-2)" }}>
-                  Total: <span className="font-bold" style={{ color: "var(--dt-text-1)" }}>Rp {formatValue(areaData.total)}</span>
-                  <span className="ml-1 text-gray-500 font-mono">({pct}%)</span>
-                </p>
-                <div className="border-t mt-2 pt-2 space-y-1" style={{ borderColor: "var(--dt-card-border)" }}>
+
+                <div className="border-t border-dashed mt-2 pt-2 space-y-1.5" style={{ borderColor: "var(--dt-border)" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--dt-text-4)" }}>Region Breakdown</p>
                   {areaData.regions.map((r) => (
-                    <div key={r.name} className="flex justify-between gap-3" style={{ color: "var(--dt-text-3)" }}>
+                    <div key={r.name} className="flex justify-between gap-4 items-center" style={{ color: "var(--dt-text-2)" }}>
                       <span className="truncate">{r.name.replace("Region ", "")}</span>
                       <span className="font-mono font-medium whitespace-nowrap" style={{ color: "var(--dt-text-1)" }}>
                         Rp {formatValue(r.revenue)}
@@ -193,23 +244,25 @@ export function IndonesiaGeoChart() {
       </div>
 
       {/* Area Legend Bar */}
-      <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
+      <div className="flex items-center gap-3 mt-4 flex-wrap justify-center p-2 rounded-lg" style={{ background: "var(--dt-bg)" }}>
         {data.map((area) => {
           const pct = grandTotal > 0 ? ((area.total / grandTotal) * 100).toFixed(1) : 0;
           const color = AREA_COLORS[area.area];
           return (
             <div
               key={area.area}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-transform hover:scale-105 cursor-pointer"
               style={{
-                background: `${color}15`,
-                border: `1px solid ${color}40`,
-                color,
+                background: "var(--dt-card)",
+                border: `1.5px solid ${color}`,
+                color: "var(--dt-text-1)",
               }}
+              onMouseEnter={() => setHoveredArea(area.area)}
+              onMouseLeave={() => setHoveredArea(null)}
             >
-              <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
               <span>{SHORT_NAMES[area.area]}</span>
-              <span className="font-mono font-bold">{pct}%</span>
+              <span className="font-mono" style={{ color }}>{pct}%</span>
             </div>
           );
         })}
