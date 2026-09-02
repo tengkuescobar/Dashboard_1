@@ -43,32 +43,23 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
     ? originalData 
     : originalData.filter(d => d.name === activeCategory);
 
+  const totalValue = activeData.reduce((sum, d) => sum + d.value, 0);
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const pct = totalValue > 0 ? ((data.value / totalValue) * 100).toFixed(1) : 0;
       return (
         <div className="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 p-3 rounded-lg shadow-xl text-xs">
           <p className="font-bold mb-1" style={{ color: data.color }}>{data.name}</p>
           <p className="text-gray-600 dark:text-gray-300">
             Revenue: <span className="font-semibold text-gray-900 dark:text-white">Rp {formatValue(data.value)}</span>
+            <span className="ml-1 text-gray-500 font-mono font-medium">({pct}%)</span>
           </p>
         </div>
       );
     }
     return null;
-  };
-
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    if (percent < 0.05) return null;
-    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-  
-    return (
-      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
   };
 
   return (
@@ -98,8 +89,6 @@ export function RevenueCompositionPie({ breakdown = [], loading = false }) {
                   dataKey="value"
                   stroke="none"
                   animationDuration={500}
-                  labelLine={false}
-                  label={renderCustomizedLabel}
                 >
                   {activeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
