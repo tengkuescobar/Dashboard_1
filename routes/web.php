@@ -20,6 +20,7 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::get('/dashboard/driver-trend', [DashboardController::class, 'driverTrend']);
     Route::get('/dashboard/gauge-chart', [DashboardController::class, 'getGaugeChartData']);
     Route::get('/dashboard/variance-analysis', [DashboardController::class, 'varianceAnalysis']);
+    Route::get('/dashboard/revenue-by-area', [DashboardController::class, 'revenueByArea']);
 
     // Location Dimension API
     Route::get('/locations', [DashboardController::class, 'locations']);

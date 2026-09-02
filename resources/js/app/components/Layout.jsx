@@ -7,8 +7,9 @@ import { ChartDetailPopover } from "../DashboardComponents";
 
 // ── Global Date Filter Context ─────────────────────────────────────────────
 const DateFilterContext = createContext({
-  dateFilter: { month: "All", quarter: "All", year: new Date().getFullYear() },
+  dateFilter: { month: "All", quarter: "All", year: new Date().getFullYear(), area: "All", region: "All" },
   setDateFilter: () => { },
+  locations: [],
 });
 
 export function useDateFilter() {
@@ -82,7 +83,19 @@ function FilterDropdown({ label, value, options, onChange, width = 140 }) {
   );
 }
 
-function DateFilters({ dateFilter, setDateFilter }) {
+function DateFilters({ dateFilter, setDateFilter, locations }) {
+  // Build area options from locations
+  const areaOptions = ["All", ...locations.map(l => l.area)];
+
+  // Build region options based on selected area
+  let regionOptions = ["All"];
+  if (dateFilter.area !== "All") {
+    const areaData = locations.find(l => l.area === dateFilter.area);
+    if (areaData) {
+      regionOptions = ["All", ...areaData.regions.map(r => r.name)];
+    }
+  }
+
   return (
     <div className="flex items-center gap-3">
       <FilterDropdown
@@ -109,6 +122,22 @@ function DateFilters({ dateFilter, setDateFilter }) {
         onChange={(y) => setDateFilter(p => ({ ...p, year: y }))}
         width={100}
       />
+      <FilterDropdown
+        label="Filter Area"
+        value={dateFilter.area}
+        options={areaOptions}
+        onChange={(a) => setDateFilter(p => ({ ...p, area: a, region: "All" }))}
+        width={170}
+      />
+      {dateFilter.area !== "All" && (
+        <FilterDropdown
+          label="Filter Region"
+          value={dateFilter.region}
+          options={regionOptions}
+          onChange={(r) => setDateFilter(p => ({ ...p, region: r }))}
+          width={200}
+        />
+      )}
     </div>
   );
 }
@@ -128,13 +157,23 @@ export default function Layout() {
     const urlYear = searchParams.get("year");
     const urlMonth = searchParams.get("month");
     const urlQuarter = searchParams.get("quarter");
+    const urlArea = searchParams.get("area");
+    const urlRegion = searchParams.get("region");
 
     return {
       month: urlMonth ? (urlMonth === "All" ? "All" : parseInt(urlMonth, 10)) : "All",
       quarter: urlQuarter || "All",
       year: urlYear ? parseInt(urlYear, 10) : 2025,
+      area: urlArea || "All",
+      region: urlRegion || "All",
     };
   });
+
+  // Fetch locations for filter dropdowns
+  const [locations, setLocations] = useState([]);
+  useEffect(() => {
+    axios.get("/api/locations").then(res => setLocations(res.data)).catch(() => {});
+  }, []);
 
   // Whenever dateFilter changes, sync it to URL search params
   const setDateFilter = useCallback((updater) => {
@@ -146,6 +185,8 @@ export default function Layout() {
         year: String(next.year),
         month: String(next.month),
         quarter: String(next.quarter),
+        area: String(next.area),
+        region: String(next.region),
       }, { replace: true });
 
       return next;
@@ -162,7 +203,7 @@ export default function Layout() {
   }, [isDark]);
 
   return (
-    <DateFilterContext.Provider value={{ dateFilter, setDateFilter }}>
+    <DateFilterContext.Provider value={{ dateFilter, setDateFilter, locations }}>
       <div
         className={`min-h-screen w-full flex ${isDark ? "dark" : ""}`}
         style={{
@@ -184,7 +225,7 @@ export default function Layout() {
             </div>
 
             <div className="flex items-center gap-3">
-              <DateFilters dateFilter={dateFilter} setDateFilter={setDateFilter} />
+              <DateFilters dateFilter={dateFilter} setDateFilter={setDateFilter} locations={locations} />
               <button onClick={() => setIsDark((d) => !d)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                 style={{ background: "var(--dt-pill-bg)", border: "1px solid var(--dt-pill-border)", color: "var(--dt-text-2)" }}

@@ -156,4 +156,15 @@ class DashboardController extends Controller
 
         return response()->json($data);
     }
+
+    public function revenueByArea(Request $request)
+    {
+        $key = $this->cacheKey('revenue_by_area', $request);
+
+        $data = Cache::remember($key, self::CACHE_TTL, function () use ($request) {
+            return $this->dashboardService->revenueByArea($request);
+        });
+
+        return response()->json($data);
+    }
 }

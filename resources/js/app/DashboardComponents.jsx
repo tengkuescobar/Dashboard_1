@@ -9,6 +9,7 @@ export * from "./components/charts/overview/SummaryTable";
 export * from "./components/charts/overview/ScorecardRow";
 export * from "./components/charts/overview/BreakdownList";
 export * from "./components/charts/overview/RevenueCompositionPie";
+export * from "./components/charts/overview/IndonesiaGeoChart";
 export * from "./components/charts/revenue/RevenueStackedBar";
 export * from "./components/charts/revenue/MonthlyTotalChart";
 export * from "./components/charts/revenue/LosChart";

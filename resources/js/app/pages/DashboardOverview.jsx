@@ -7,6 +7,7 @@ import {
   GaugeChart,
   BreakdownList,
   RevenueCompositionPie,
+  IndonesiaGeoChart,
 } from "../DashboardComponents";
 import { TargetManagementModal } from "../components/charts/overview/TargetManagementModal";
 
@@ -73,8 +74,11 @@ export default function DashboardOverview() {
         onSaved={fetchSummary}
       />
 
-      {/* Breakdown list & Composition Pie */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Area Geo Chart, Composition Pie & Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-1">
+          <IndonesiaGeoChart />
+        </div>
         <div className="lg:col-span-1">
           <RevenueCompositionPie breakdown={breakdown} loading={loading} />
         </div>

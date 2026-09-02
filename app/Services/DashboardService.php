@@ -716,4 +716,60 @@ class DashboardService
         
         return $result;
     }
+
+    public function revenueByArea(Request $request)
+    {
+        $year = (int) $request->get('year', 2025);
+        $month = $request->get('month', 'All');
+        $quarter = $request->get('quarter', 'All');
+
+        // Determine date range
+        if ($month !== 'All') {
+            $m = (int) $month;
+            $startDate = Carbon::create($year, $m, 1)->format('Y-m-d');
+            $endDate = Carbon::create($year, $m, 1)->endOfMonth()->format('Y-m-d');
+        } elseif ($quarter !== 'All') {
+            $q = (int) str_replace('Q', '', $quarter);
+            $startMonth = ($q - 1) * 3 + 1;
+            $startDate = Carbon::create($year, $startMonth, 1)->format('Y-m-d');
+            $endDate = Carbon::create($year, $startMonth + 2, 1)->endOfMonth()->format('Y-m-d');
+        } else {
+            $startDate = Carbon::create($year, 1, 1)->format('Y-m-d');
+            $endDate = Carbon::create($year, 12, 31)->format('Y-m-d');
+        }
+
+        $data = DB::table('fact_revenues')
+            ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
+            ->join('dim_locations', 'fact_revenues.dim_location_id', '=', 'dim_locations.id')
+            ->whereBetween('dim_dates.date', [$startDate, $endDate])
+            ->select(
+                'dim_locations.area_name',
+                'dim_locations.region_name',
+                DB::raw('SUM(actual_revenue) as total')
+            )
+            ->groupBy('dim_locations.area_name', 'dim_locations.region_name')
+            ->orderBy('dim_locations.area_name')
+            ->orderBy(DB::raw('SUM(actual_revenue)'), 'desc')
+            ->get();
+
+        // Group by area
+        $areas = [];
+        foreach ($data as $row) {
+            $areaKey = $row->area_name;
+            if (!isset($areas[$areaKey])) {
+                $areas[$areaKey] = [
+                    'area' => $areaKey,
+                    'total' => 0,
+                    'regions' => [],
+                ];
+            }
+            $areas[$areaKey]['total'] += (float) $row->total;
+            $areas[$areaKey]['regions'][] = [
+                'name' => $row->region_name,
+                'revenue' => (float) $row->total,
+            ];
+        }
+
+        return array_values($areas);
+    }
 }
