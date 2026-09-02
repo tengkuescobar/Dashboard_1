@@ -26,6 +26,12 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::post('/targets', [\App\Http\Controllers\Api\TargetController::class, 'store']);
     Route::post('/targets/bulk', [\App\Http\Controllers\Api\TargetController::class, 'bulkStore']);
     Route::delete('/targets', [\App\Http\Controllers\Api\TargetController::class, 'destroy']);
+
+    // Cache Management
+    Route::post('/cache/clear', function () {
+        \Illuminate\Support\Facades\Cache::flush();
+        return response()->json(['status' => 'ok', 'message' => 'Cache cleared']);
+    });
 });
 
 // SPA catch-all (protected)
