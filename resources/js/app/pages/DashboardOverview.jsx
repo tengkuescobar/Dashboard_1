@@ -74,17 +74,19 @@ export default function DashboardOverview() {
         onSaved={fetchSummary}
       />
 
-      {/* Area Geo Chart, Composition Pie & Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-1">
-          <IndonesiaGeoChart />
-        </div>
+      {/* Breakdown list & Composition Pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1">
           <RevenueCompositionPie breakdown={breakdown} loading={loading} />
         </div>
         <div className="lg:col-span-2">
           <BreakdownList breakdown={breakdown} loading={loading} />
         </div>
+      </div>
+
+      {/* Area Geo Chart */}
+      <div className="mt-5">
+        <IndonesiaGeoChart />
       </div>
       
       <div className="h-4" />
