@@ -35,65 +35,65 @@ const SHORT_NAMES = {
 const PROVINCE_TO_AREA = {
   // Sumatera
   "ACEH": "Area 1 Sumatera",
-  "SUMATERA UTARA": "Area 1 Sumatera",
-  "SUMATERA BARAT": "Area 1 Sumatera",
+  "SUMATERAUTARA": "Area 1 Sumatera",
+  "SUMATERABARAT": "Area 1 Sumatera",
   "RIAU": "Area 1 Sumatera",
   "JAMBI": "Area 1 Sumatera",
-  "SUMATERA SELATAN": "Area 1 Sumatera",
+  "SUMATERASELATAN": "Area 1 Sumatera",
   "BENGKULU": "Area 1 Sumatera",
   "LAMPUNG": "Area 1 Sumatera",
-  "KEPULAUAN BANGKA BELITUNG": "Area 1 Sumatera",
-  "KEPULAUAN RIAU": "Area 1 Sumatera",
-  "NANGGROE ACEH DARUSSALAM": "Area 1 Sumatera",
-  "BANGKA BELITUNG": "Area 1 Sumatera",
+  "BANGKABELITUNG": "Area 1 Sumatera",
   
   // Jabotabek
-  "DKI JAKARTA": "Area 2 Jabotabek",
-  "JAKARTA RAYA": "Area 2 Jabotabek",
-  "JAWA BARAT": "Area 2 Jabotabek",
+  "DKIJAKARTA": "Area 2 Jabotabek",
+  "JAKARTA": "Area 2 Jabotabek",
+  "JAWABARAT": "Area 2 Jabotabek",
   "BANTEN": "Area 2 Jabotabek",
   
   // Jawa Bali
-  "JAWA TENGAH": "Area 3 Jawa Bali",
-  "DI YOGYAKARTA": "Area 3 Jawa Bali",
+  "JAWATENGAH": "Area 3 Jawa Bali",
   "YOGYAKARTA": "Area 3 Jawa Bali",
-  "JAWA TIMUR": "Area 3 Jawa Bali",
+  "JAWATIMUR": "Area 3 Jawa Bali",
   "BALI": "Area 3 Jawa Bali",
-  "NUSA TENGGARA BARAT": "Area 3 Jawa Bali",
-  "NUSA TENGGARA TIMUR": "Area 3 Jawa Bali",
+  "NUSATENGGARABARAT": "Area 3 Jawa Bali",
+  "NUSATENGGARATIMUR": "Area 3 Jawa Bali",
+  "NTB": "Area 3 Jawa Bali",
+  "NTT": "Area 3 Jawa Bali",
+  "NUSA": "Area 3 Jawa Bali",
   
-  // Pamasuka (Kalimantan, Sulawesi, Maluku, Papua)
-  "KALIMANTAN BARAT": "Area 4 Pamasuka",
-  "KALIMANTAN TENGAH": "Area 4 Pamasuka",
-  "KALIMANTAN SELATAN": "Area 4 Pamasuka",
-  "KALIMANTAN TIMUR": "Area 4 Pamasuka",
-  "KALIMANTAN UTARA": "Area 4 Pamasuka",
-  "SULAWESI UTARA": "Area 4 Pamasuka",
-  "SULAWESI TENGAH": "Area 4 Pamasuka",
-  "SULAWESI SELATAN": "Area 4 Pamasuka",
-  "SULAWESI TENGGARA": "Area 4 Pamasuka",
+  // Pamasuka
+  "KALIMANTANBARAT": "Area 4 Pamasuka",
+  "KALIMANTANTENGAH": "Area 4 Pamasuka",
+  "KALIMANTANSELATAN": "Area 4 Pamasuka",
+  "KALIMANTANTIMUR": "Area 4 Pamasuka",
+  "KALIMANTANUTARA": "Area 4 Pamasuka",
+  "SULAWESIUTARA": "Area 4 Pamasuka",
+  "SULAWESITENGAH": "Area 4 Pamasuka",
+  "SULAWESISELATAN": "Area 4 Pamasuka",
+  "SULAWESITENGGARA": "Area 4 Pamasuka",
   "GORONTALO": "Area 4 Pamasuka",
-  "SULAWESI BARAT": "Area 4 Pamasuka",
+  "SULAWESIBARAT": "Area 4 Pamasuka",
   "MALUKU": "Area 4 Pamasuka",
-  "MALUKU UTARA": "Area 4 Pamasuka",
-  "PAPUA BARAT": "Area 4 Pamasuka",
   "PAPUA": "Area 4 Pamasuka",
-  "PAPUA SELATAN": "Area 4 Pamasuka",
-  "PAPUA TENGAH": "Area 4 Pamasuka",
-  "PAPUA PEGUNUNGAN": "Area 4 Pamasuka",
-  "PAPUA BARAT DAYA": "Area 4 Pamasuka",
-  "IRIAN JAYA TIMUR": "Area 4 Pamasuka",
-  "IRIAN JAYA TENGAH": "Area 4 Pamasuka",
-  "IRIAN JAYA BARAT": "Area 4 Pamasuka"
+  "IRIAN": "Area 4 Pamasuka"
 };
 
 // Helper to resolve province name to Area
 const getAreaForProvince = (propName) => {
   if (!propName) return null;
-  const name = propName.toUpperCase();
+  // Remove spaces, dots, and non-alphanumeric chars for ultra-permissive matching
+  const name = propName.toUpperCase().replace(/[^A-Z]/g, '');
+  
+  // Special case: make sure we don't accidentally match "PAPUA" with "NUSA" or something weird
   for (const [key, area] of Object.entries(PROVINCE_TO_AREA)) {
     if (name.includes(key)) return area;
   }
+  
+  // If it's completely unmatched, fallback to Jawa Bali if it sounds like Bali/Nusa
+  if (name.includes('BLI') || name.includes('TENGGARA')) {
+    return "Area 3 Jawa Bali";
+  }
+  
   return null;
 };
 
