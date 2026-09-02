@@ -290,6 +290,7 @@ class DashboardService
 
             $breakdown[] = [
                 'name' => $cat,
+                'actual' => $isFullYearOrQuarter ? $catYTD : $catCM,
                 'mom' => $calcPct($catCM, $catPM),
                 'yoy' => $calcPct($catCM, $catPYM),
                 'ytd' => $calcPct($catYTD, $catPYTD),
