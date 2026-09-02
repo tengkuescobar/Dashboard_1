@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use App\Models\FactTarget;
 use App\Models\DimSalesType;
 use Carbon\Carbon;
@@ -101,6 +102,9 @@ class TargetController extends Controller
             $this->upsertTarget($year, $month, $newSalesTypeId, $newSalesTarget);
         });
 
+        // Clear dashboard cache so gauges reflect updated targets immediately
+        Cache::flush();
+
         return response()->json([
             'status' => 'success',
             'message' => "Target untuk Bulan {$month} Tahun {$year} berhasil diperbarui.",
@@ -155,6 +159,9 @@ class TargetController extends Controller
             }
         });
 
+        // Clear dashboard cache so gauges reflect updated targets immediately
+        Cache::flush();
+
         return response()->json([
             'status' => 'success',
             'message' => "Target tahun {$year} berhasil diperbarui secara massal.",
@@ -179,6 +186,9 @@ class TargetController extends Controller
             $query->delete();
             $msg = "Seluruh Target Tahun {$year} berhasil di-reset.";
         }
+
+        // Clear dashboard cache so gauges reflect deleted targets immediately
+        Cache::flush();
 
         return response()->json([
             'status' => 'success',
