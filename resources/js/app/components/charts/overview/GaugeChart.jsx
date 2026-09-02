@@ -24,9 +24,9 @@ export function GaugeChart({ title, actual, target }) {
   const labelMax = polarXY(cx, cy, r + 22, startDeg + totalSweep);
 
   return <Card className="flex flex-col items-center text-center">
-    <p className="text-xs font-semibold mb-1" style={{ color: "var(--dt-text-2)" }}>{title}</p>
+    <p className="text-xs font-semibold mb-2" style={{ color: "var(--dt-text-2)" }}>{title}</p>
 
-    <svg width={188} height={140} viewBox="0 0 188 140" style={{ overflow: "visible" }}>
+    <svg width={188} height={140} viewBox="0 0 188 140" style={{ overflow: "visible", marginTop: "14px" }}>
       <defs>
         <linearGradient
           id={`zone-lo-${id}`}
