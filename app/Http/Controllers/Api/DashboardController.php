@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\DashboardService;
+use App\Models\DimLocation;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -25,10 +27,35 @@ class DashboardController extends Controller
     private function cacheKey(string $prefix, Request $request, array $extraKeys = []): string
     {
         $parts = [$prefix];
-        foreach (array_merge(['year', 'month', 'quarter', 'grain'], $extraKeys) as $key) {
+        foreach (array_merge(['year', 'month', 'quarter', 'grain', 'area', 'region'], $extraKeys) as $key) {
             $parts[] = $request->get($key, 'All');
         }
         return implode('_', $parts);
+    }
+
+    /**
+     * Return the list of areas and regions for filter dropdowns.
+     */
+    public function locations()
+    {
+        $locations = DB::table('dim_locations')
+            ->select('id', 'area_name', 'region_name')
+            ->orderBy('area_name')
+            ->orderBy('region_name')
+            ->get();
+
+        // Group by area for the frontend
+        $grouped = $locations->groupBy('area_name')->map(function ($regions, $areaName) {
+            return [
+                'area' => $areaName,
+                'regions' => $regions->map(fn($r) => [
+                    'id' => $r->id,
+                    'name' => $r->region_name,
+                ])->values(),
+            ];
+        })->values();
+
+        return response()->json($grouped);
     }
 
     public function summary(Request $request)

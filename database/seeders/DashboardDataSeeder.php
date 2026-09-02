@@ -58,6 +58,59 @@ class DashboardDataSeeder extends Seeder
             }
         }
 
+        // 2b. Setup Locations (Area & Region)
+        $this->command->info('Populating locations (Area & Region)...');
+        $locationMap = [
+            'Area 1 Sumatera' => [
+                'Region Sumbagut',
+                'Region Sumbagteng',
+                'Region Sumbagsel',
+            ],
+            'Area 2 Jabotabek' => [
+                'Region Jabotabek',
+                'Region Jawa Barat',
+            ],
+            'Area 3 Jawa Bali' => [
+                'Region Jawa Tengah & DIY',
+                'Region Jawa Timur',
+                'Region Balinusra',
+            ],
+            'Area 4 Pamasuka' => [
+                'Region Kalimantan',
+                'Region Sulawesi',
+                'Region Maluku dan Papua',
+            ],
+        ];
+
+        $locationIds = [];
+        $now = Carbon::now();
+        foreach ($locationMap as $areaName => $regions) {
+            foreach ($regions as $regionName) {
+                $locationIds[] = DB::table('dim_locations')->insertGetId([
+                    'area_name'   => $areaName,
+                    'region_name' => $regionName,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
+                ]);
+            }
+        }
+
+        // Revenue distribution weights per location (index matches $locationIds order)
+        // Jabotabek & Jawa are weighted heavier (realistic Indonesia telco distribution)
+        $locationWeights = [
+            0.07, // Sumbagut
+            0.06, // Sumbagteng
+            0.05, // Sumbagsel
+            0.25, // Jabotabek (largest)
+            0.15, // Jawa Barat
+            0.12, // Jateng & DIY
+            0.13, // Jawa Timur
+            0.05, // Balinusra
+            0.05, // Kalimantan
+            0.04, // Sulawesi
+            0.03, // Maluku dan Papua
+        ];
+
         $driverMetrics = ['Playing User', 'Payload User', 'Payload All', 'Trx New Sales', 'Sell Out'];
         $metricIds = [];
         foreach ($driverMetrics as $metric) {
@@ -188,28 +241,40 @@ class DashboardDataSeeder extends Seeder
                             $monthlyTarget = $monthlyTargetMap["{$year}-{$month}-{$pId}-{$sTypeId}"];
 
                             $dailyBase = $monthlyTarget / $daysInMonth;
-                            $actualAmount = round($dailyBase * $dowFactor * $noise(), 2);
 
-                            $factRevenues[] = [
-                                'dim_date_id' => $dimDateId,
-                                'dim_product_id' => $pId,
-                                'dim_sales_type_id' => $sTypeId,
-                                'actual_revenue' => $actualAmount,
-                            ];
+                            // Split revenue across all 11 locations using weights
+                            foreach ($locationIds as $locIdx => $locId) {
+                                $locShare = $locationWeights[$locIdx];
+                                $actualAmount = round($dailyBase * $locShare * $dowFactor * $noise(), 2);
+
+                                $factRevenues[] = [
+                                    'dim_date_id' => $dimDateId,
+                                    'dim_product_id' => $pId,
+                                    'dim_sales_type_id' => $sTypeId,
+                                    'dim_location_id' => $locId,
+                                    'actual_revenue' => $actualAmount,
+                                ];
+                            }
                         }
                     } else {
                         $pId = $productIds["$category-"];
                         $monthlyTarget = $monthlyTargetMap["{$year}-{$month}-{$pId}-{$sTypeId}"];
 
                         $dailyBase = $monthlyTarget / $daysInMonth;
-                        $actualAmount = round($dailyBase * $dowFactor * $noise(), 2);
 
-                        $factRevenues[] = [
-                            'dim_date_id' => $dimDateId,
-                            'dim_product_id' => $pId,
-                            'dim_sales_type_id' => $sTypeId,
-                            'actual_revenue' => $actualAmount,
-                        ];
+                        // Split revenue across all 11 locations using weights
+                        foreach ($locationIds as $locIdx => $locId) {
+                            $locShare = $locationWeights[$locIdx];
+                            $actualAmount = round($dailyBase * $locShare * $dowFactor * $noise(), 2);
+
+                            $factRevenues[] = [
+                                'dim_date_id' => $dimDateId,
+                                'dim_product_id' => $pId,
+                                'dim_sales_type_id' => $sTypeId,
+                                'dim_location_id' => $locId,
+                                'actual_revenue' => $actualAmount,
+                            ];
+                        }
                     }
                 }
             }
@@ -223,11 +288,11 @@ class DashboardDataSeeder extends Seeder
                 ];
             }
 
-            if (count($factRevenues) >= 2000) {
+            if (count($factRevenues) >= 500) {
                 DB::table('fact_revenues')->insert($factRevenues);
                 $factRevenues = [];
             }
-            if (count($factDrivers) >= 2000) {
+            if (count($factDrivers) >= 500) {
                 DB::table('fact_drivers')->insert($factDrivers);
                 $factDrivers = [];
             }

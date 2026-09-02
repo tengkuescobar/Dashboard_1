@@ -21,6 +21,9 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::get('/dashboard/gauge-chart', [DashboardController::class, 'getGaugeChartData']);
     Route::get('/dashboard/variance-analysis', [DashboardController::class, 'varianceAnalysis']);
 
+    // Location Dimension API
+    Route::get('/locations', [DashboardController::class, 'locations']);
+
     // Target Management API
     Route::get('/targets', [\App\Http\Controllers\Api\TargetController::class, 'index']);
     Route::post('/targets', [\App\Http\Controllers\Api\TargetController::class, 'store']);

@@ -8,6 +8,28 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
+    /**
+     * Apply area/region location filter to a query builder on fact_revenues.
+     * Expects the query already has a join to dim_locations OR will join it here.
+     */
+    private function applyLocationFilter($query, Request $request, bool $needsJoin = true)
+    {
+        $area = $request->get('area');
+        $region = $request->get('region');
+
+        if ($area || $region) {
+            if ($needsJoin) {
+                $query->join('dim_locations', 'fact_revenues.dim_location_id', '=', 'dim_locations.id');
+            }
+            if ($region) {
+                $query->where('dim_locations.region_name', $region);
+            } elseif ($area) {
+                $query->where('dim_locations.area_name', $area);
+            }
+        }
+
+        return $query;
+    }
     private function getDateRange($year, $month, $type)
     {
         $currentCarbon = Carbon::create($year, $month, 1)->endOfMonth();
@@ -155,7 +177,7 @@ class DashboardService
 
         $revData = [];
         foreach ($periods as $key => $range) {
-            $revData[$key] = DB::table('fact_revenues')
+            $query = DB::table('fact_revenues')
                 ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
                 ->join('dim_products', 'fact_revenues.dim_product_id', '=', 'dim_products.id')
                 ->join('dim_sales_types', 'fact_revenues.dim_sales_type_id', '=', 'dim_sales_types.id')
@@ -166,8 +188,11 @@ class DashboardService
                     'dim_products.broadband_pack_type as pack_type',
                     DB::raw('SUM(actual_revenue) as total')
                 )
-                ->groupBy('dim_products.category', 'dim_sales_types.type_name', 'dim_products.broadband_pack_type')
-                ->get();
+                ->groupBy('dim_products.category', 'dim_sales_types.type_name', 'dim_products.broadband_pack_type');
+
+            $this->applyLocationFilter($query, $request);
+
+            $revData[$key] = $query->get();
         }
 
         // Helper: extract revenue from pre-fetched grouped data (no DB query!)
@@ -461,7 +486,7 @@ class DashboardService
         $dateFormat = $this->getDateFormat($grain);
         [$startDate, $endDate] = $this->getChartDateRange($request);
 
-        $data = DB::table('fact_revenues')
+        $query = DB::table('fact_revenues')
             ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
             ->join('dim_products', 'fact_revenues.dim_product_id', '=', 'dim_products.id')
             ->whereBetween('dim_dates.date', [$startDate, $endDate])
@@ -471,8 +496,10 @@ class DashboardService
                 DB::raw('SUM(actual_revenue) as total')
             )
             ->groupBy('label', 'dim_products.category')
-            ->orderBy('label')
-            ->get();
+            ->orderBy('label');
+
+        $this->applyLocationFilter($query, $request);
+        $data = $query->get();
 
         $formatted = [];
         foreach ($data as $row) {
@@ -492,7 +519,7 @@ class DashboardService
         $dateFormat = $this->getDateFormat($grain);
         [$startDate, $endDate] = $this->getChartDateRange($request);
 
-        $data = DB::table('fact_revenues')
+        $query = DB::table('fact_revenues')
             ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
             ->join('dim_sales_types', 'fact_revenues.dim_sales_type_id', '=', 'dim_sales_types.id')
             ->whereBetween('dim_dates.date', [$startDate, $endDate])
@@ -502,8 +529,10 @@ class DashboardService
                 DB::raw('SUM(actual_revenue) as total')
             )
             ->groupBy('label', 'dim_sales_types.type_name')
-            ->orderBy('label')
-            ->get();
+            ->orderBy('label');
+
+        $this->applyLocationFilter($query, $request);
+        $data = $query->get();
 
         $formatted = [];
         foreach ($data as $row) {
@@ -523,7 +552,7 @@ class DashboardService
         $dateFormat = $this->getDateFormat($grain);
         [$startDate, $endDate] = $this->getChartDateRange($request);
 
-        $data = DB::table('fact_revenues')
+        $query = DB::table('fact_revenues')
             ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
             ->join('dim_sales_types', 'fact_revenues.dim_sales_type_id', '=', 'dim_sales_types.id')
             ->whereBetween('dim_dates.date', [$startDate, $endDate])
@@ -533,8 +562,10 @@ class DashboardService
                 DB::raw('SUM(actual_revenue) as total')
             )
             ->groupBy('label', 'dim_sales_types.type_name')
-            ->orderBy('label')
-            ->get();
+            ->orderBy('label');
+
+        $this->applyLocationFilter($query, $request);
+        $data = $query->get();
 
         $formatted = [];
         foreach ($data as $row) {
@@ -555,7 +586,7 @@ class DashboardService
         $dateFormat = $this->getDateFormat($grain);
         [$startDate, $endDate] = $this->getChartDateRange($request);
 
-        $data = DB::table('fact_revenues')
+        $query = DB::table('fact_revenues')
             ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
             ->join('dim_products', 'fact_revenues.dim_product_id', '=', 'dim_products.id')
             ->where('dim_products.category', 'Broadband')
@@ -567,8 +598,10 @@ class DashboardService
                 DB::raw('SUM(actual_revenue) as total')
             )
             ->groupBy('label', 'dim_products.broadband_pack_type')
-            ->orderBy('label')
-            ->get();
+            ->orderBy('label');
+
+        $this->applyLocationFilter($query, $request);
+        $data = $query->get();
 
         $formatted = [];
         foreach ($data as $row) {
@@ -588,7 +621,7 @@ class DashboardService
         $dateFormat = $this->getDateFormat($grain);
         [$startDate, $endDate] = $this->getChartDateRange($request);
 
-        $data = DB::table('fact_revenues')
+        $query = DB::table('fact_revenues')
             ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
             ->join('dim_products', 'fact_revenues.dim_product_id', '=', 'dim_products.id')
             ->where('dim_products.category', 'Broadband')
@@ -604,8 +637,10 @@ class DashboardService
                 DB::raw('SUM(actual_revenue) as total')
             )
             ->groupBy('label', 'pack_group')
-            ->orderBy('label')
-            ->get();
+            ->orderBy('label');
+
+        $this->applyLocationFilter($query, $request);
+        $data = $query->get();
 
         $formatted = [];
         foreach ($data as $row) {
@@ -652,7 +687,7 @@ class DashboardService
     {
         $year = (int) $request->get('year', 2025);
         
-        $data = DB::table('fact_revenues')
+        $query = DB::table('fact_revenues')
             ->join('dim_dates', 'fact_revenues.dim_date_id', '=', 'dim_dates.id')
             ->whereIn('dim_dates.year', [$year - 1, $year])
             ->select(
@@ -660,8 +695,10 @@ class DashboardService
                 'dim_dates.month',
                 DB::raw('SUM(actual_revenue) as total')
             )
-            ->groupBy('dim_dates.year', 'dim_dates.month')
-            ->get();
+            ->groupBy('dim_dates.year', 'dim_dates.month');
+
+        $this->applyLocationFilter($query, $request);
+        $data = $query->get();
             
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         $result = [];
