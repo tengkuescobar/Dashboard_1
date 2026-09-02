@@ -190,7 +190,7 @@ export function IndonesiaGeoChart() {
                       strokeWidth={isHovered ? 1.5 : 0.8}
                       style={{
                         default: { outline: "none", transition: "all 0.3s" },
-                        hover: { outline: "none", fill: activeColor, transition: "all 0.3s", cursor: "pointer" },
+                        hover: { outline: "none", fill: fullColor, transition: "all 0.3s", cursor: "pointer" },
                         pressed: { outline: "none" },
                       }}
                       onMouseEnter={(e) => {
