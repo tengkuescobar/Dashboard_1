@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { MapPin } from "lucide-react";
-import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import { MapPin, Maximize2, Minimize2 } from "lucide-react";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { useDateFilter } from "../../Layout";
 import { Card, SectionTitle } from "../../ui/ChartUIComponents";
 import { ChartSkeleton } from "../../ui/skeleton";
@@ -104,6 +104,7 @@ export function IndonesiaGeoChart() {
   const [loading, setLoading] = useState(true);
   const [hoveredArea, setHoveredArea] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -131,22 +132,33 @@ export function IndonesiaGeoChart() {
     );
   }
 
-  return (
-    <Card className="h-full flex flex-col">
-      <SectionTitle icon={MapPin} label="Revenue by Area" />
+  // The inner content extracted so we can render it normally or in fullscreen
+  const renderMapContent = () => (
+    <div className="flex-1 flex flex-col w-full h-full p-4 relative">
+      <div className="flex items-center justify-between mb-4">
+        <SectionTitle icon={MapPin} label="Revenue by Area" />
+        <button
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          style={{ color: "var(--dt-text-2)" }}
+          title={isFullscreen ? "Exit Fullscreen" : "View Fullscreen"}
+        >
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
+      </div>
 
-      <div className="relative flex-1 bg-[#f8fcfd] dark:bg-black/20 rounded-xl border border-blue-500/10 overflow-hidden flex flex-col items-center justify-center p-2 min-h-[300px]">
+      <div className={`relative flex-1 bg-[#f8fcfd] dark:bg-black/20 rounded-xl border border-blue-500/10 overflow-hidden flex flex-col items-center justify-center p-2 ${isFullscreen ? 'min-h-[60vh]' : 'min-h-[300px]'}`}>
         {/* SVG Map via react-simple-maps */}
-        <div className="w-full h-full max-w-4xl flex items-center justify-center">
+        <div className="w-full h-full max-w-5xl flex items-center justify-center">
           <ComposableMap
             projection="geoMercator"
             projectionConfig={{
-              scale: 1300,
+              scale: isFullscreen ? 1400 : 1150,
               center: [118, -2.5]
             }}
             width={800}
-            height={320}
-            style={{ width: "100%", height: "auto" }}
+            height={400}
+            style={{ width: "100%", height: "100%", maxHeight: isFullscreen ? '70vh' : '450px' }}
           >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
@@ -281,6 +293,25 @@ export function IndonesiaGeoChart() {
           );
         })}
       </div>
+    </div>
+  );
+
+  if (isFullscreen) {
+    return (
+      <>
+        <Card className="h-full flex flex-col opacity-0">{/* Placeholder to keep layout spacing */}</Card>
+        <div className="fixed inset-0 z-[100] flex flex-col p-6 backdrop-blur-md bg-white/90 dark:bg-[#0f172a]/95">
+          <div className="flex-1 w-full max-w-[1400px] mx-auto bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden">
+            {renderMapContent()}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <Card className="h-full flex flex-col p-0">
+      {renderMapContent()}
     </Card>
   );
 }
